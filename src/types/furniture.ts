@@ -32,3 +32,13 @@ export interface SortConfig {
   field: SortField;
   direction: SortDirection;
 }
+
+export interface PlacedFurniture {
+  instanceId: string;
+  item: FurnitureItem;
+  row: number;
+  col: number;
+}
+
+export const ROOM_COLS = 16;
+export const ROOM_ROWS = 7;

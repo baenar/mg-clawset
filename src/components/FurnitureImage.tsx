@@ -1,13 +1,15 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, DragEvent } from 'react';
+import type { FurnitureItem } from '../types/furniture';
 
 interface Props {
   src: string;
   alt: string;
   compact?: boolean;
+  draggableItem?: FurnitureItem;
 }
 
-export default function FurnitureImage({ src, alt, compact }: Props) {
+export default function FurnitureImage({ src, alt, compact, draggableItem }: Props) {
   const size = compact ? 40 : 56;
   const imgSize = compact ? 34 : 48;
   const [showModal, setShowModal] = useState(false);
@@ -33,6 +35,15 @@ export default function FurnitureImage({ src, alt, compact }: Props) {
     };
   }, []);
 
+  const handleDragStart = useCallback((e: DragEvent) => {
+    if (!draggableItem) return;
+    e.dataTransfer.setData('application/json', JSON.stringify(draggableItem));
+    e.dataTransfer.effectAllowed = 'copy';
+    window.dispatchEvent(new CustomEvent('furniture-drag-start', { detail: draggableItem }));
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setShowModal(false);
+  }, [draggableItem]);
+
   const wrapper: CSSProperties = {
     width: size,
     height: size,
@@ -44,13 +55,14 @@ export default function FurnitureImage({ src, alt, compact }: Props) {
     background: 'var(--code-bg)',
     overflow: 'hidden',
     position: 'relative',
-    cursor: compact ? 'default' : 'pointer',
+    cursor: draggableItem ? 'grab' : compact ? 'default' : 'pointer',
   };
 
   const img: CSSProperties = {
     maxWidth: imgSize,
     maxHeight: imgSize,
     objectFit: 'contain',
+    pointerEvents: 'none',
   };
 
   const modal: CSSProperties = {
@@ -68,7 +80,6 @@ export default function FurnitureImage({ src, alt, compact }: Props) {
     pointerEvents: 'none',
   };
 
-  // Position the modal relative to the wrapper
   const getModalPosition = (): CSSProperties => {
     if (!wrapperRef.current) return {};
     const rect = wrapperRef.current.getBoundingClientRect();
@@ -84,8 +95,10 @@ export default function FurnitureImage({ src, alt, compact }: Props) {
       style={wrapper}
       onMouseEnter={handleEnter}
       onMouseLeave={handleLeave}
+      draggable={!!draggableItem}
+      onDragStart={handleDragStart}
     >
-      <img src={fixedSrc} alt={alt} style={img} />
+      <img src={fixedSrc} alt={alt} style={img} draggable={false} />
       {showModal && (
         <div style={{ ...modal, ...getModalPosition() }}>
           <img

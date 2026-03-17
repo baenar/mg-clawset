@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import type { CSSProperties } from 'react';
-import type { Filters, SortConfig, SortField, FurnitureItem, RawFurnitureItem } from './types/furniture';
+import type { Filters, SortConfig, SortField, FurnitureItem, RawFurnitureItem, PlacedFurniture } from './types/furniture';
 import furnitureData from './data/furniture_data.json';
 import SplitScreenContainer from './components/SplitScreenContainer';
 import FurnitureBrowser from './components/FurnitureBrowser';
@@ -25,6 +25,24 @@ const defaultSort: SortConfig = { field: 'name', direction: 'asc' };
 
 const ITEMS_PER_PAGE = 50;
 const STORAGE_KEY = 'mg-clawset-ownership';
+const ROOM_STORAGE_KEY = 'mg-clawset-room';
+
+let nextInstanceId = 1;
+
+function loadRoom(): PlacedFurniture[] {
+  try {
+    const raw = localStorage.getItem(ROOM_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as PlacedFurniture[];
+      for (const p of parsed) {
+        const num = parseInt(p.instanceId.split('-').pop() || '0', 10);
+        if (num >= nextInstanceId) nextInstanceId = num + 1;
+      }
+      return parsed;
+    }
+  } catch { /* ignore */ }
+  return [];
+}
 
 function loadOwnership(): Record<string, number> {
   try {
@@ -57,10 +75,28 @@ function App() {
   const [ownership, setOwnership] = useState<Record<string, number>>(loadOwnership);
   const [expanded, setExpanded] = useState(false);
   const [page, setPage] = useState(0);
+  const [placed, setPlaced] = useState<PlacedFurniture[]>(loadRoom);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(ownership));
   }, [ownership]);
+
+  useEffect(() => {
+    localStorage.setItem(ROOM_STORAGE_KEY, JSON.stringify(placed));
+  }, [placed]);
+
+  const handlePlaceFurniture = useCallback((item: FurnitureItem, row: number, col: number) => {
+    const instanceId = `placed-${nextInstanceId++}`;
+    setPlaced((prev) => [...prev, { instanceId, item, row, col }]);
+  }, []);
+
+  const handleRemoveFurniture = useCallback((instanceId: string) => {
+    setPlaced((prev) => prev.filter((p) => p.instanceId !== instanceId));
+  }, []);
+
+  const handleMoveFurniture = useCallback((instanceId: string, row: number, col: number) => {
+    setPlaced((prev) => prev.map((p) => p.instanceId === instanceId ? { ...p, row, col } : p));
+  }, []);
 
   const handleSortChange = useCallback((field: SortField) => {
     setSort((prev) => ({
@@ -148,7 +184,13 @@ function App() {
             onPageChange={setPage}
           />
         </div>
-        <RoomDesignerWorkspace visible={expanded} />
+        <RoomDesignerWorkspace
+          visible={expanded}
+          placed={placed}
+          onPlace={handlePlaceFurniture}
+          onRemove={handleRemoveFurniture}
+          onMove={handleMoveFurniture}
+        />
       </SplitScreenContainer>
     </div>
   );

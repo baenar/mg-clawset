@@ -6,7 +6,7 @@ import StatDisplay from './StatDisplay';
 import OwnershipCounter from './OwnershipCounter';
 
 const GRID_FULL = '56px 48px minmax(120px, 1fr) repeat(5, 60px) 90px';
-const GRID_COMPACT = '40px 36px minmax(60px, 1fr) repeat(5, 36px) 76px';
+const GRID_COMPACT = '36px 28px minmax(40px, 1fr) repeat(5, 28px) 68px';
 
 const baseCard: CSSProperties = {
   display: 'grid',
@@ -37,7 +37,7 @@ interface Props {
 export default function FurnitureCard({ item, owned, onIncrement, onDecrement, compact }: Props) {
   return (
     <div style={{ ...baseCard, gridTemplateColumns: compact ? GRID_COMPACT : GRID_FULL, gap: compact ? 8 : 0 }}>
-      <FurnitureImage src={item.image_url} alt={item.name} compact={compact} />
+      <FurnitureImage src={item.image_url} alt={item.name} compact={compact} draggableItem={item} />
       <ShapeVisualizer shape={item.shape} compact={compact} />
       <div style={nameStyle} title={item.name}>{item.name}</div>
       <StatDisplay value={item.appeal} compact={compact} />
