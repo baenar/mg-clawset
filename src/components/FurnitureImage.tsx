@@ -16,8 +16,6 @@ export default function FurnitureImage({ src, alt, compact, draggableItem }: Pro
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  const fixedSrc = src.startsWith('public/') ? src.slice(6) : src;
-
   const handleEnter = useCallback(() => {
     if (compact) return;
     timerRef.current = setTimeout(() => setShowModal(true), 500);
@@ -98,11 +96,11 @@ export default function FurnitureImage({ src, alt, compact, draggableItem }: Pro
       draggable={!!draggableItem}
       onDragStart={handleDragStart}
     >
-      <img src={fixedSrc} alt={alt} style={img} draggable={false} />
+      <img src={src} alt={alt} style={img} draggable={false} />
       {showModal && (
         <div style={{ ...modal, ...getModalPosition() }}>
           <img
-            src={fixedSrc}
+            src={src}
             alt={alt}
             style={{ maxWidth: 180, maxHeight: 180, objectFit: 'contain' }}
           />
