@@ -151,6 +151,24 @@ function getVisualBounds(shape: number[][]): { minR: number; maxR: number; minC:
   return { minR, maxR, minC, maxC };
 }
 
+/** Detect whether anchors (type 4) exist above or below the visual bounds. */
+function getAnchorAlignment(shape: number[][]): 'top' | 'bottom' | 'center' {
+  const vis = getVisualBounds(shape);
+  let hasAnchorAbove = false;
+  let hasAnchorBelow = false;
+  for (let r = 0; r < shape.length; r++) {
+    for (let c = 0; c < shape[r].length; c++) {
+      if (shape[r][c] === 4) {
+        if (r < vis.minR) hasAnchorAbove = true;
+        if (r > vis.maxR) hasAnchorBelow = true;
+      }
+    }
+  }
+  if (hasAnchorBelow && !hasAnchorAbove) return 'bottom';
+  if (hasAnchorAbove && !hasAnchorBelow) return 'top';
+  return 'center';
+}
+
 type DragPayload =
   | { type: 'new'; item: FurnitureItem }
   | { type: 'move'; instanceId: string; item: FurnitureItem };
@@ -292,6 +310,7 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
         const { minR, maxR, minC, maxC } = getVisualBounds(p.item.shape);
         const visualRows = maxR - minR + 1;
         const visualCols = maxC - minC + 1;
+        const anchorAlign = getAnchorAlignment(p.item.shape);
 
         const fixedSrc = p.item.image_url.startsWith('public/')
           ? p.item.image_url.slice(6)
@@ -301,6 +320,12 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
         const top = `${((p.row + minR) / ROOM_ROWS) * 100}%`;
         const width = `${(visualCols / ROOM_COLS) * 100}%`;
         const height = `${(visualRows / ROOM_ROWS) * 100}%`;
+
+        // Push image toward the anchor side so it doesn't float
+        const objectPosition =
+          anchorAlign === 'bottom' ? 'center bottom' :
+          anchorAlign === 'top' ? 'center top' :
+          'center center';
 
         const isDragging = draggingId === p.instanceId;
 
@@ -316,9 +341,6 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
               top,
               width,
               height,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
               zIndex: 2,
               cursor: 'grab',
               opacity: isDragging ? 0.3 : 1,
@@ -335,6 +357,7 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
                 width: '100%',
                 height: '100%',
                 objectFit: 'contain',
+                objectPosition,
                 filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))',
               }}
             />
