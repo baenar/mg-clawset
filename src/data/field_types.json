@@ -1,0 +1,22 @@
+{
+  "1": {
+    "label": "Empty",
+    "description": "Occupies no space."
+  },
+  "2": {
+    "label": "Solid",
+    "description": "Occupies space."
+  },
+  "3": {
+    "label": "Anchor Point",
+    "description": "Occupies space; allows other items to attach."
+  },
+  "4": {
+    "label": "Anchor",
+    "description": "Occupies no space; must attach to a matching Anchor Point."
+  },
+  "5": {
+    "label": "Background",
+    "description": "Occupies no space; cannot overlap room borders."
+  }
+}
