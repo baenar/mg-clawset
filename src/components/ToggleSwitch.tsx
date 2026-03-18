@@ -21,7 +21,7 @@ const styles: Record<string, CSSProperties> = {
     width: 16,
     height: 16,
     borderRadius: '50%',
-    background: '#fff',
+    background: 'var(--bg)',
     position: 'absolute',
     top: 2,
     transition: 'left 0.2s',

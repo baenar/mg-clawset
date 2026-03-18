@@ -73,7 +73,7 @@ const overlayBase: CSSProperties = {
 };
 
 const helpPanelBase: CSSProperties = {
-  background: '#2a2b35',
+  background: 'var(--bg)',
   border: '1px solid var(--border)',
   borderRadius: 16,
   padding: '28px 32px',
@@ -85,7 +85,7 @@ const helpPanelBase: CSSProperties = {
   fontFamily: "'Rubik', system-ui, sans-serif",
   fontSize: 14,
   lineHeight: 1.6,
-  boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+  boxShadow: '0 8px 32px rgba(0,0,0,0.25)',
   cursor: 'default',
   display: 'flex',
   flexDirection: 'column',
@@ -122,7 +122,7 @@ const statBadge = (color: string): CSSProperties => ({
   background: color,
   fontSize: 12,
   fontWeight: 500,
-  color: '#fff',
+  color: 'var(--text-h)',
 });
 
 const bubbleStyle = (visible: boolean): CSSProperties => ({
@@ -132,14 +132,14 @@ const bubbleStyle = (visible: boolean): CSSProperties => ({
   marginTop: 6,
   padding: '10px 14px',
   borderRadius: '4px 12px 12px 12px',
-  background: '#2f303a',
+  background: 'var(--bg)',
   border: '1px solid var(--border)',
   color: 'var(--text)',
   fontSize: 13,
   fontFamily: "'Rubik', system-ui, sans-serif",
   lineHeight: 1.45,
   width: 240,
-  boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+  boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
   zIndex: 50,
   cursor: 'pointer',
   opacity: visible ? 1 : 0,

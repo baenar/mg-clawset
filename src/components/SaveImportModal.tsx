@@ -45,9 +45,10 @@ const pathBox: CSSProperties = {
   padding: '8px 12px',
   fontSize: 12,
   fontFamily: 'monospace',
-  color: 'var(--sand-dune)',
+  color: 'var(--text-h)',
   marginBottom: 16,
   wordBreak: 'break-all',
+  border: '1px solid var(--border)',
 };
 
 const warningBox: CSSProperties = {
