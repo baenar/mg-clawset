@@ -4,6 +4,7 @@ import SearchInput from './SearchInput';
 import StatFilter from './StatFilter';
 import ToggleSwitch from './ToggleSwitch';
 import SortButton from './SortButton';
+import CatMascot from './CatMascot';
 
 const GRID_FULL = '56px 48px minmax(120px, 1fr) repeat(5, 60px) 90px';
 const GRID_COMPACT = '36px 28px minmax(40px, 1fr) repeat(5, 28px) 68px';
@@ -43,19 +44,19 @@ export default function FilterHeader({ filters, onFiltersChange, sort, onSortCha
   const update = (partial: Partial<Filters>) =>
     onFiltersChange({ ...filters, ...partial });
 
-  const grid: CSSProperties = {
+  const headerGrid: CSSProperties = {
     display: 'grid',
     gridTemplateColumns: compact ? GRID_COMPACT : GRID_FULL,
+    gridTemplateRows: 'auto auto',
     alignItems: 'center',
-    gap: compact ? 8 : 0,
+    gap: compact ? '8px 8px' : '8px 0',
     padding: '0 29px',
   };
 
   return (
     <div style={styles.wrapper}>
-      <div style={grid}>
-        <div />
-        <div />
+      <div style={headerGrid}>
+        <CatMascot compact={compact} />
         <SortButton
           label="Name"
           active={sort.field === 'name'}
@@ -77,11 +78,7 @@ export default function FilterHeader({ filters, onFiltersChange, sort, onSortCha
           direction={sort.direction}
           onClick={() => onSortChange('owned')}
         />
-      </div>
 
-      <div style={grid}>
-        <div />
-        <div />
         <SearchInput value={filters.name} onChange={(v) => update({ name: v })} />
         {statColumns.map((col) => (
           <StatFilter
