@@ -1,75 +1,84 @@
-# React + TypeScript + Vite
+# <span style="display: flex; align-items: center; gap: 8px;"><img src="./public/favicon.svg" width="30" style="vertical-align: middle;" />Mewgenics Clawset</span>
+**Live app:** [https://baenar.github.io/mg-clawset/](https://baenar.github.io/mg-clawset/)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A furniture collection manager and room designer for Mewgenics players. Browse the complete furniture database, track your collection, and design room layouts.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+### Furniture Browser
 
-## React Compiler
+- **Browse** all furniture in the game with images, shapes, and stats.
+- **Filter** by name, minimum stat values (Appeal, Comfort, Stimulation, Health, Mutation), or show only owned items.
+- **Sort** by any column — click column headers (Name, APL, CMF, STM, HLT, MUT, Owned) to toggle ascending/descending.
+- **Track ownership** — use the + and - buttons on each card to record how many of each item you have. Counts are saved in your browser's local storage.
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+### Stat Abbreviations
 
-Note: This will impact Vite dev & build performances.
+| Abbreviation | Stat        |
+|--------------|-------------|
+| APL          | Appeal      |
+| CMF          | Comfort     |
+| STM          | Stimulation |
+| HLT          | Health      |
+| MUT          | Mutation    |
 
-## Expanding the ESLint configuration
+### Room Designer
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- Click the **arrow button** on the right edge of the furniture list to open the room planner (splits into 1/3 list + 2/3 designer).
+- **Drag furniture images** from the list and drop them onto the 16x7 grid.
+- Furniture snaps to the grid based on its shape. Valid placements are highlighted green, invalid ones red.
+- **Drag placed furniture** to move it — all connected (anchored) pieces move together.
+- **Click placed furniture** to remove it. Pieces anchored to it are cascade-removed.
+- Toggle **Expert View** to see cell types (Solid, Anchor Point, Anchor, Background) with a color-coded legend.
+- **Stats summary** at the top shows the room's total Appeal, Comfort, Stimulation, Health, and Mutation.
+- Room layout is saved in local storage and persists across sessions.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### Import from Save File
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+- Click **"Import from savefile"** at the bottom of the furniture list.
+- Select your `.sav` file from `C:\Users\<user>\AppData\Roaming\Glaiel Games\Mewgenics\<steam_id>\saves`.
+- The app parses the save database and automatically populates your owned furniture counts.
+- **Note:** This overwrites your current inventory data.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Running Locally
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) (v18+)
+- npm (comes with Node.js)
+
+### Setup
+
+```bash
+git clone https://github.com/baenar/mg-clawset.git
+cd mg-clawset
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Development
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev
 ```
+
+Opens the app at [http://localhost:5173/mg-clawset/](http://localhost:5173/mg-clawset/).
+
+### Production Build
+
+```bash
+npm run build
+npm run preview
+```
+
+## Tech Stack
+
+- React + TypeScript
+- Vite
+- sql.js (for parsing `.sav` files)
+
+## Contact
+
+Open to suggestions and feedback!
+
+- [@baenar_ on X](https://x.com/baenar_)
+- [@baenar on GitHub](https://github.com/baenar)
