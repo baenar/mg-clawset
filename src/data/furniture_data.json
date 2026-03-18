@@ -28306,5 +28306,164 @@
     "stimulation": -2,
     "health": 0,
     "mutation": 0
+  },
+  {
+    "name": "Food Box",
+    "image_url": "graphics/FURNITURE_special_foodbox.svg",
+    "shape": [
+      [
+        3,
+        3
+      ],
+      [
+        4,
+        4
+      ]
+    ],
+    "appeal": 0,
+    "comfort": 0,
+    "stimulation": 0,
+    "health": 0,
+    "mutation": 0
+  },
+  {
+    "name": "Idol of Comfort",
+    "image_url": "graphics/FURNITURE_special_comfortidol.svg",
+    "shape": [
+      [
+        2
+      ],
+      [
+        2
+      ],
+      [
+        4
+      ]
+    ],
+    "appeal": 0,
+    "comfort": 5,
+    "stimulation": 0,
+    "health": 0,
+    "mutation": 0
+  },
+  {
+    "name": "Idol of Stimulation",
+    "image_url": "graphics/FURNITURE_special_stimulationidol.svg",
+    "shape": [
+      [
+        2
+      ],
+      [
+        2
+      ],
+      [
+        4
+      ]
+    ],
+    "appeal": 0,
+    "comfort": 0,
+    "stimulation": 5,
+    "health": 0,
+    "mutation": 0
+  },
+  {
+    "name": "Idol of Health",
+    "image_url": "graphics/FURNITURE_special_healthidol.svg",
+    "shape": [
+      [
+        2
+      ],
+      [
+        2
+      ],
+      [
+        4
+      ]
+    ],
+    "appeal": 0,
+    "comfort": 0,
+    "stimulation": 0,
+    "health": 5,
+    "mutation": 0
+  },
+  {
+    "name": "Idol of Evolution",
+    "image_url": "graphics/FURNITURE_special_evolutionidol.svg",
+    "shape": [
+      [
+        2
+      ],
+      [
+        2
+      ],
+      [
+        4
+      ]
+    ],
+    "appeal": 0,
+    "comfort": 0,
+    "stimulation": 0,
+    "health": 0,
+    "mutation": 5
+  },
+  {
+    "name": "Idol of Appeal",
+    "image_url": "graphics/FURNITURE_special_appealidol.svg",
+    "shape": [
+      [
+        2
+      ],
+      [
+        2
+      ],
+      [
+        4
+      ]
+    ],
+    "appeal": 5,
+    "comfort": 0,
+    "stimulation": 0,
+    "health": 0,
+    "mutation": 0
+  },
+  {
+    "name": "Idol of Chastity",
+    "image_url": "graphics/FURNITURE_special_suppressoridol.svg",
+    "shape": [
+      [
+        2
+      ],
+      [
+        2
+      ],
+      [
+        4
+      ]
+    ],
+    "appeal": 0,
+    "comfort": 5,
+    "stimulation": 0,
+    "health": 0,
+    "mutation": 0
+  },
+  {
+    "name": "Idol of Chaos",
+    "image_url": "graphics/FURNITURE_special_fightidol.svg",
+    "shape": [
+      [
+        2
+      ],
+      [
+        2
+      ],
+      [
+        4
+      ]
+    ],
+    "appeal": 0,
+    "comfort": -5,
+    "stimulation": 0,
+    "health": 0,
+    "mutation": 0
   }
 ]
