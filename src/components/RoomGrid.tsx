@@ -481,7 +481,6 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
       {Array.from({ length: ROOM_ROWS }, (_, row) =>
         Array.from({ length: ROOM_COLS }, (_, col) => {
           const key = `${row}-${col}`;
-          const occupant = occupancy[row][col];
           const shapeType = shapeTypeGrid?.[row][col];
 
           let bg = 'transparent';
