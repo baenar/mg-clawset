@@ -116,7 +116,7 @@ function buildShapeTypeGrid(placed: PlacedFurniture[]): (number | null)[][] {
     for (let r = 0; r < shape.length; r++) {
       for (let c = 0; c < shape[r].length; c++) {
         const cellType = shape[r][c];
-        if (cellType !== 1) {
+        if (cellType !== 1 && cellType !== 4) {
           const gr = p.row + r;
           const gc = p.col + c;
           if (gr >= 0 && gr < ROOM_ROWS && gc >= 0 && gc < ROOM_COLS) {
@@ -361,7 +361,8 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
     overflow: 'hidden',
   };
 
-  const furnitureOverlays = !expertView
+  // Image overlays for normal view
+  const imageOverlays = !expertView
     ? placed.map((p) => {
         const { minR, maxR, minC, maxC } = getVisualBounds(p.item.shape);
         const visualRows = maxR - minR + 1;
@@ -377,10 +378,7 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
         const width = `${(visualCols / ROOM_COLS) * 100}%`;
         const height = `${(visualRows / ROOM_ROWS) * 100}%`;
 
-        // For items with anchor at top or bottom, prioritize filling height
-        // so the image touches the grid edge. Allow horizontal overflow (centered).
         const fillHeight = anchorAlign === 'top' || anchorAlign === 'bottom';
-
         const isDragging = draggingId === p.instanceId;
 
         return (
@@ -424,6 +422,54 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
       })
     : null;
 
+  // Draggable overlays for expert view — invisible hit areas over each piece's full shape
+  const expertDragOverlays = expertView
+    ? placed.map((p) => {
+        const shape = p.item.shape;
+        // Compute bounding box of all non-empty cells
+        let minR = shape.length, maxR = -1, minC = shape[0]?.length ?? 0, maxC = -1;
+        for (let r = 0; r < shape.length; r++) {
+          for (let c = 0; c < shape[r].length; c++) {
+            if (shape[r][c] !== 1) {
+              if (r < minR) minR = r;
+              if (r > maxR) maxR = r;
+              if (c < minC) minC = c;
+              if (c > maxC) maxC = c;
+            }
+          }
+        }
+        if (maxR === -1) return null;
+
+        const left = `${((p.col + minC) / ROOM_COLS) * 100}%`;
+        const top = `${((p.row + minR) / ROOM_ROWS) * 100}%`;
+        const width = `${((maxC - minC + 1) / ROOM_COLS) * 100}%`;
+        const height = `${((maxR - minR + 1) / ROOM_ROWS) * 100}%`;
+        const isDragging = draggingId === p.instanceId;
+
+        return (
+          <div
+            key={`expert-drag-${p.instanceId}`}
+            draggable
+            onDragStart={(e) => handlePieceDragStart(e, p)}
+            onDragEnd={handlePieceDragEnd}
+            style={{
+              position: 'absolute',
+              left,
+              top,
+              width,
+              height,
+              zIndex: 3,
+              cursor: 'grab',
+              opacity: isDragging ? 0.3 : 1,
+              background: 'transparent',
+            }}
+            title={`${p.item.name} (drag to move, click to remove)`}
+            onClick={() => onRemove(p.instanceId)}
+          />
+        );
+      })
+    : null;
+
   return (
     <div
       ref={gridRef}
@@ -455,18 +501,13 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
                 ...cellBase,
                 background: bg,
                 border: `1px solid ${borderColor}`,
-                cursor: expertView && occupant ? 'pointer' : 'default',
               }}
-              onClick={
-                expertView && occupant
-                  ? () => onRemove(occupant)
-                  : undefined
-              }
             />
           );
         }),
       )}
-      {furnitureOverlays}
+      {imageOverlays}
+      {expertDragOverlays}
       {/* Hover highlight overlay – always on top of furniture images */}
       {hoverInfo && Array.from({ length: ROOM_ROWS }, (_, row) =>
         Array.from({ length: ROOM_COLS }, (_, col) => {
