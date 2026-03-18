@@ -1,28 +1,24 @@
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import type { SortDirection } from '../types/furniture';
 
-const styles: Record<string, CSSProperties> = {
-  button: {
-    background: 'none',
-    border: 'none',
-    cursor: 'pointer',
-    fontFamily: 'var(--font)',
-    fontSize: 12,
-    fontWeight: 600,
-    color: 'var(--text)',
-    padding: '2px 4px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: 2,
-    whiteSpace: 'nowrap',
-  },
-  active: {
-    color: 'var(--accent)',
-  },
+const buttonStyle: CSSProperties = {
+  background: 'none',
+  border: 'none',
+  cursor: 'pointer',
+  fontFamily: 'var(--font)',
+  fontSize: 12,
+  fontWeight: 600,
+  color: 'var(--text)',
+  padding: '2px 4px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 2,
+  whiteSpace: 'nowrap',
 };
 
 interface Props {
-  label: string;
+  label: ReactNode;
   active: boolean;
   direction: SortDirection;
   onClick: () => void;
@@ -30,12 +26,24 @@ interface Props {
 
 export default function SortButton({ label, active, direction, onClick }: Props) {
   const arrow = active ? (direction === 'asc' ? ' ▲' : ' ▼') : '';
+
+  // When active, tint icon images red using CSS filter
+  const iconFilter = active
+    ? 'brightness(0) saturate(100%) invert(35%) sepia(60%) saturate(2000%) hue-rotate(330deg) brightness(95%)'
+    : undefined;
+
   return (
     <button
-      style={{ ...styles.button, ...(active ? styles.active : {}) }}
+      style={{
+        ...buttonStyle,
+        ...(active ? { color: 'var(--accent)' } : {}),
+      }}
       onClick={onClick}
     >
-      {label}{arrow}
+      <span style={iconFilter ? { filter: iconFilter, display: 'flex' } : { display: 'flex' }}>
+        {label}
+      </span>
+      {arrow}
     </button>
   );
 }

@@ -4,6 +4,7 @@ const styles: Record<string, CSSProperties> = {
   wrapper: {
     display: 'flex',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
     cursor: 'pointer',
     userSelect: 'none',

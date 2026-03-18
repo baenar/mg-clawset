@@ -9,13 +9,13 @@ const styles: Record<string, CSSProperties> = {
   },
   input: {
     width: '100%',
-    padding: '4px 6px',
+    padding: '6px 6px',
     borderRadius: 6,
     border: '1px solid var(--border)',
     background: 'var(--bg)',
     color: 'var(--text-h)',
     fontFamily: 'var(--font)',
-    fontSize: 13,
+    fontSize: 14,
     textAlign: 'center' as const,
     outline: 'none',
     MozAppearance: 'textfield' as never,
@@ -59,7 +59,7 @@ export default function StatFilter({ label, value, onChange }: Props) {
       <input
         className="stat-filter"
         type="number"
-        placeholder={label}
+        placeholder={"-"}
         title={`Min ${label}`}
         value={displayValue}
         onChange={(e) => {

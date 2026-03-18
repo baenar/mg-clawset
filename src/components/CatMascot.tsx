@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import type { CSSProperties } from 'react';
+import StatIcon from './StatIcon';
 
 function detectAdblock(): Promise<boolean> {
   return new Promise((resolve) => {
@@ -273,15 +274,15 @@ export default function CatMascot({ compact }: Props) {
             </div>
 
             <div style={sectionStyle}>
-              <div style={headingStyle}>Stat Abbreviations</div>
+              <div style={headingStyle}>Stats</div>
               <div style={statRowStyle}>
-                <span style={statBadge('rgba(193,73,83,0.7)')}>APL = Appeal</span>
-                <span style={statBadge('rgba(70,130,180,0.7)')}>CMF = Comfort</span>
-                <span style={statBadge('rgba(180,140,60,0.7)')}>STM = Stimulation</span>
+                <span style={statBadge('rgba(193,73,83,0.7)')}><StatIcon stat="appeal" size={14} /> Appeal</span>
+                <span style={statBadge('rgba(70,130,180,0.7)')}><StatIcon stat="comfort" size={14} /> Comfort</span>
+                <span style={statBadge('rgba(180,140,60,0.7)')}><StatIcon stat="stimulation" size={14} /> Stimulation</span>
               </div>
               <div style={statRowStyle}>
-                <span style={statBadge('rgba(80,160,80,0.7)')}>HLT = Health</span>
-                <span style={statBadge('rgba(140,80,180,0.7)')}>MUT = Mutation</span>
+                <span style={statBadge('rgba(80,160,80,0.7)')}><StatIcon stat="health" size={14} /> Health</span>
+                <span style={statBadge('rgba(140,80,180,0.7)')}><StatIcon stat="mutation" size={14} /> Mutation</span>
               </div>
             </div>
 
@@ -291,7 +292,7 @@ export default function CatMascot({ compact }: Props) {
                 <li>Use the <b>search bar</b> to filter furniture by name.</li>
                 <li>Set <b>minimum stat values</b> in the filter row — only items meeting all thresholds are shown.</li>
                 <li>Toggle <b>"Only"</b> to show only furniture you own.</li>
-                <li>Click <b>column headers</b> (Name, APL, CMF...) to sort ascending/descending.</li>
+                <li>Click <b>column headers</b> (Name, stat icons...) to sort ascending/descending.</li>
                 <li>Use <b>+</b> and <b>-</b> buttons to track how many of each item you have.</li>
               </ul>
             </div>

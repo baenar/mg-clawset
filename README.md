@@ -9,18 +9,20 @@ A furniture collection manager and room designer for Mewgenics players. Browse t
 
 - **Browse** all furniture in the game with images, shapes, and stats.
 - **Filter** by name, minimum stat values (Appeal, Comfort, Stimulation, Health, Mutation), or show only owned items.
-- **Sort** by any column — click column headers (Name, APL, CMF, STM, HLT, MUT, Owned) to toggle ascending/descending.
+- **Sort** by any column — click column headers (Name, stat icons, Owned) to toggle ascending/descending.
 - **Track ownership** — use the + and - buttons on each card to record how many of each item you have. Counts are saved in your browser's local storage.
 
-### Stat Abbreviations
+### Stats
 
-| Abbreviation | Stat        |
-|--------------|-------------|
-| APL          | Appeal      |
-| CMF          | Comfort     |
-| STM          | Stimulation |
-| HLT          | Health      |
-| MUT          | Mutation    |
+Each stat is represented by an icon in the column headers and room summary:
+
+| Icon | Stat        |
+|------|-------------|
+| ![Appeal](./public/icons/Appeal_Icon.png)         | Appeal      |
+| ![Comfort](./public/icons/Comfort_Icon.png)       | Comfort     |
+| ![Stimulation](./public/icons/Stimulation_Icon.png) | Stimulation |
+| ![Health](./public/icons/Health_Icon.png)          | Health      |
+| ![Mutation](./public/icons/Mutation_Icon.png)      | Mutation    |
 
 ### Room Designer
 

@@ -4,6 +4,7 @@ import SearchInput from './SearchInput';
 import StatFilter from './StatFilter';
 import ToggleSwitch from './ToggleSwitch';
 import SortButton from './SortButton';
+import StatIcon from './StatIcon';
 import CatMascot from './CatMascot';
 
 const GRID_FULL = '56px 48px minmax(120px, 1fr) repeat(5, 60px) 90px';
@@ -24,12 +25,12 @@ const styles: Record<string, CSSProperties> = {
   },
 };
 
-const statColumns: { label: string; field: SortField; filterKey: keyof Filters }[] = [
-  { label: 'APL', field: 'appeal', filterKey: 'minAppeal' },
-  { label: 'CMF', field: 'comfort', filterKey: 'minComfort' },
-  { label: 'STM', field: 'stimulation', filterKey: 'minStimulation' },
-  { label: 'HLT', field: 'health', filterKey: 'minHealth' },
-  { label: 'MUT', field: 'mutation', filterKey: 'minMutation' },
+const statColumns: { label: string; stat: string; field: SortField; filterKey: keyof Filters }[] = [
+  { label: 'APL', stat: 'appeal', field: 'appeal', filterKey: 'minAppeal' },
+  { label: 'CMF', stat: 'comfort', field: 'comfort', filterKey: 'minComfort' },
+  { label: 'STM', stat: 'stimulation', field: 'stimulation', filterKey: 'minStimulation' },
+  { label: 'HLT', stat: 'health', field: 'health', filterKey: 'minHealth' },
+  { label: 'MUT', stat: 'mutation', field: 'mutation', filterKey: 'minMutation' },
 ];
 
 interface Props {
@@ -66,7 +67,7 @@ export default function FilterHeader({ filters, onFiltersChange, sort, onSortCha
         {statColumns.map((col) => (
           <SortButton
             key={col.field}
-            label={col.label}
+            label={<StatIcon stat={col.stat} size={18} />}
             active={sort.field === col.field}
             direction={sort.direction}
             onClick={() => onSortChange(col.field)}

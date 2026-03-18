@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import type { PlacedFurniture, StatKey } from '../types/furniture';
+import StatIcon from './StatIcon';
 
 const STATS: { key: StatKey; label: string }[] = [
   { key: 'appeal', label: 'APL' },
@@ -28,14 +29,6 @@ const statStyle: CSSProperties = {
   gap: 4,
   fontSize: 13,
   fontFamily: 'var(--font)',
-};
-
-const labelStyle: CSSProperties = {
-  color: 'var(--text)',
-  fontWeight: 500,
-  fontSize: 11,
-  textTransform: 'uppercase',
-  letterSpacing: 0.5,
 };
 
 const valueStyle: CSSProperties = {
@@ -75,7 +68,7 @@ export default function RoomStatsSummary({ placed }: Props) {
     <div style={containerStyle}>
       {STATS.map((s) => (
         <div key={s.key} style={statStyle}>
-          <span style={labelStyle}>{s.label}</span>
+          <StatIcon stat={s.key} size={16} />
           <span style={{
             ...valueStyle,
             color: totals[s.key] > 0
