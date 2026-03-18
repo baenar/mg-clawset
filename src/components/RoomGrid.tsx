@@ -151,21 +151,33 @@ function getVisualBounds(shape: number[][]): { minR: number; maxR: number; minC:
   return { minR, maxR, minC, maxC };
 }
 
-/** Detect whether anchors (type 4) exist above or below the visual bounds. */
-function getAnchorAlignment(shape: number[][]): 'top' | 'bottom' | 'center' {
+/**
+ * Determine vertical alignment for the furniture image.
+ * - If the topmost visual row contains an anchor point (3), push image to top
+ *   so it visually touches the top grid line.
+ * - If there are anchor cells (4) below the visual bounds, push image to bottom
+ *   so it sits on top of the anchor attachment.
+ * - Otherwise center.
+ */
+function getImageAlignment(shape: number[][]): 'top' | 'bottom' | 'center' {
   const vis = getVisualBounds(shape);
-  let hasAnchorAbove = false;
-  let hasAnchorBelow = false;
-  for (let r = 0; r < shape.length; r++) {
-    for (let c = 0; c < shape[r].length; c++) {
-      if (shape[r][c] === 4) {
-        if (r < vis.minR) hasAnchorAbove = true;
-        if (r > vis.maxR) hasAnchorBelow = true;
-      }
-    }
+
+  // Check if top visual row has anchor points (type 3)
+  let topHasAnchorPoint = false;
+  if (vis.minR >= 0 && vis.minR < shape.length) {
+    topHasAnchorPoint = shape[vis.minR].some(c => c === 3);
   }
-  if (hasAnchorBelow && !hasAnchorAbove) return 'bottom';
-  if (hasAnchorAbove && !hasAnchorBelow) return 'top';
+
+  // Check if there are anchor cells (type 4) below visual bounds
+  let hasAnchorBelow = false;
+  for (let r = vis.maxR + 1; r < shape.length; r++) {
+    if (shape[r].some(c => c === 4)) { hasAnchorBelow = true; break; }
+  }
+
+  // Bottom anchor takes priority (image rests on shelf)
+  if (hasAnchorBelow) return 'bottom';
+  // Then top anchor point (image should touch the ceiling/top grid)
+  if (topHasAnchorPoint) return 'top';
   return 'center';
 }
 
@@ -310,7 +322,7 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
         const { minR, maxR, minC, maxC } = getVisualBounds(p.item.shape);
         const visualRows = maxR - minR + 1;
         const visualCols = maxC - minC + 1;
-        const anchorAlign = getAnchorAlignment(p.item.shape);
+        const anchorAlign = getImageAlignment(p.item.shape);
 
         const fixedSrc = p.item.image_url.startsWith('public/')
           ? p.item.image_url.slice(6)
@@ -321,11 +333,9 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
         const width = `${(visualCols / ROOM_COLS) * 100}%`;
         const height = `${(visualRows / ROOM_ROWS) * 100}%`;
 
-        // Push image toward the anchor side so it doesn't float
-        const objectPosition =
-          anchorAlign === 'bottom' ? 'center bottom' :
-          anchorAlign === 'top' ? 'center top' :
-          'center center';
+        // For items with anchor at top or bottom, prioritize filling height
+        // so the image touches the grid edge. Allow horizontal overflow (centered).
+        const fillHeight = anchorAlign === 'top' || anchorAlign === 'bottom';
 
         const isDragging = draggingId === p.instanceId;
 
@@ -345,6 +355,10 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
               cursor: 'grab',
               opacity: isDragging ? 0.3 : 1,
               transition: 'opacity 0.15s',
+              overflow: 'visible',
+              display: 'flex',
+              alignItems: anchorAlign === 'bottom' ? 'flex-end' : anchorAlign === 'top' ? 'flex-start' : 'center',
+              justifyContent: 'center',
             }}
             title={`${p.item.name} (drag to move, click to remove)`}
             onClick={() => onRemove(p.instanceId)}
@@ -354,10 +368,10 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
               alt={p.item.name}
               draggable={false}
               style={{
-                width: '100%',
                 height: '100%',
-                objectFit: 'contain',
-                objectPosition,
+                width: fillHeight ? 'auto' : '100%',
+                maxWidth: fillHeight ? 'none' : '100%',
+                objectFit: fillHeight ? undefined : 'contain',
                 filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))',
               }}
             />
