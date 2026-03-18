@@ -5,11 +5,32 @@ import furnitureData from './data/furniture_data.json';
 import SplitScreenContainer from './components/SplitScreenContainer';
 import FurnitureBrowser from './components/FurnitureBrowser';
 import RoomDesignerWorkspace from './components/RoomDesignerWorkspace';
+import SaveImportModal from './components/SaveImportModal';
 
 const allFurniture: FurnitureItem[] = (furnitureData as RawFurnitureItem[]).map((item, index) => ({
   ...item,
   id: `${item.name}__${index}`,
 }));
+
+// Map for save file import matching:
+// 1. lowercase display name -> id
+// 2. internal name (from image_url) -> id
+const furnitureIdMap = new Map<string, string>();
+for (const item of allFurniture) {
+  // Display name match
+  const displayKey = item.name.toLowerCase();
+  if (!furnitureIdMap.has(displayKey)) {
+    furnitureIdMap.set(displayKey, item.id);
+  }
+  // Internal name match: extract from "graphics/FURNITURE_xxx.svg"
+  const match = item.image_url.match(/FURNITURE_(.+)\.svg$/i);
+  if (match) {
+    const internalKey = match[1].toLowerCase();
+    if (!furnitureIdMap.has(internalKey)) {
+      furnitureIdMap.set(internalKey, item.id);
+    }
+  }
+}
 
 const defaultFilters: Filters = {
   name: '',
@@ -76,6 +97,7 @@ function App() {
   const [expanded, setExpanded] = useState(false);
   const [page, setPage] = useState(0);
   const [placed, setPlaced] = useState<PlacedFurniture[]>(loadRoom);
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(ownership));
@@ -113,6 +135,10 @@ function App() {
 
   const handleIncrement = useCallback((id: string) => {
     setOwnership((prev) => ({ ...prev, [id]: (prev[id] || 0) + 1 }));
+  }, []);
+
+  const handleImportOwnership = useCallback((newOwnership: Record<string, number>) => {
+    setOwnership(newOwnership);
   }, []);
 
   const handleDecrement = useCallback((id: string) => {
@@ -182,6 +208,7 @@ function App() {
             page={clampedPage}
             totalPages={totalPages}
             onPageChange={setPage}
+            onImportClick={() => setImportModalOpen(true)}
           />
         </div>
         <RoomDesignerWorkspace
@@ -192,6 +219,12 @@ function App() {
           onMove={handleMoveFurniture}
         />
       </SplitScreenContainer>
+      <SaveImportModal
+        open={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        onImport={handleImportOwnership}
+        furnitureIdMap={furnitureIdMap}
+      />
     </div>
   );
 }

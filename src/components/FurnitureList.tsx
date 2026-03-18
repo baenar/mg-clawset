@@ -17,14 +17,19 @@ const styles: Record<string, CSSProperties> = {
     color: 'var(--text)',
     fontSize: 14,
   },
-  pagination: {
+  paginationRow: {
+    display: 'flex',
+    alignItems: 'center',
+    padding: '8px 16px 12px',
+    borderTop: '1px solid var(--border)',
+    flexShrink: 0,
+  },
+  paginationCenter: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    padding: '8px 16px 12px',
-    borderTop: '1px solid var(--border)',
-    flexShrink: 0,
+    flex: 1,
   },
   pageButton: {
     padding: '4px 12px',
@@ -42,6 +47,18 @@ const styles: Record<string, CSSProperties> = {
     minWidth: 100,
     textAlign: 'center',
   },
+  importButton: {
+    padding: '4px 10px',
+    borderRadius: 6,
+    border: '1px solid var(--border)',
+    background: 'var(--code-bg)',
+    color: 'var(--text)',
+    fontFamily: 'var(--font)',
+    fontSize: 11,
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+  },
 };
 
 interface Props {
@@ -54,6 +71,7 @@ interface Props {
   totalPages: number;
   onPageChange: (page: number) => void;
   compact?: boolean;
+  onImportClick: () => void;
 }
 
 export default function FurnitureList({
@@ -66,6 +84,7 @@ export default function FurnitureList({
   totalPages,
   onPageChange,
   compact,
+  onImportClick,
 }: Props) {
   return (
     <>
@@ -85,32 +104,41 @@ export default function FurnitureList({
           ))
         )}
       </div>
-      <div style={styles.pagination}>
+      <div style={styles.paginationRow}>
         <button
-          style={{
-            ...styles.pageButton,
-            opacity: page === 0 ? 0.4 : 1,
-            cursor: page === 0 ? 'not-allowed' : 'pointer',
-          }}
-          onClick={() => onPageChange(page - 1)}
-          disabled={page === 0}
+          style={styles.importButton}
+          onClick={onImportClick}
+          title="Import inventory from Mewgenics save file"
         >
-          ← Prev
+          📂 Import from savefile
         </button>
-        <span style={styles.pageInfo}>
-          {page + 1} / {totalPages} ({totalItems})
-        </span>
-        <button
-          style={{
-            ...styles.pageButton,
-            opacity: page >= totalPages - 1 ? 0.4 : 1,
-            cursor: page >= totalPages - 1 ? 'not-allowed' : 'pointer',
-          }}
-          onClick={() => onPageChange(page + 1)}
-          disabled={page >= totalPages - 1}
-        >
-          Next →
-        </button>
+        <div style={styles.paginationCenter}>
+          <button
+            style={{
+              ...styles.pageButton,
+              opacity: page === 0 ? 0.4 : 1,
+              cursor: page === 0 ? 'not-allowed' : 'pointer',
+            }}
+            onClick={() => onPageChange(page - 1)}
+            disabled={page === 0}
+          >
+            ← Prev
+          </button>
+          <span style={styles.pageInfo}>
+            {page + 1} / {totalPages} ({totalItems})
+          </span>
+          <button
+            style={{
+              ...styles.pageButton,
+              opacity: page >= totalPages - 1 ? 0.4 : 1,
+              cursor: page >= totalPages - 1 ? 'not-allowed' : 'pointer',
+            }}
+            onClick={() => onPageChange(page + 1)}
+            disabled={page >= totalPages - 1}
+          >
+            Next →
+          </button>
+        </div>
       </div>
     </>
   );

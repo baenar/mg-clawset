@@ -33,6 +33,7 @@ interface Props {
   page: number;
   totalPages: number;
   onPageChange: (page: number) => void;
+  onImportClick: () => void;
 }
 
 export default function FurnitureBrowser({
@@ -50,6 +51,7 @@ export default function FurnitureBrowser({
   page,
   totalPages,
   onPageChange,
+  onImportClick,
 }: Props) {
   return (
     <div style={styles.browser}>
@@ -70,6 +72,7 @@ export default function FurnitureBrowser({
         totalPages={totalPages}
         onPageChange={onPageChange}
         compact={expanded}
+        onImportClick={onImportClick}
       />
       <ViewToggleButton expanded={expanded} onClick={onToggle} />
     </div>
