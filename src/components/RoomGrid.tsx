@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import type { CSSProperties, DragEvent } from 'react';
 import type { FurnitureItem, PlacedFurniture } from '../types/furniture';
 import { ROOM_COLS, ROOM_ROWS } from '../types/furniture';
+import { findAllAnchored, canPlaceGroup } from '../utils/anchorHelpers';
 
 const CELL_COLORS: Record<number, string> = {
   1: 'transparent',
@@ -26,13 +27,14 @@ interface Props {
   expertView: boolean;
 }
 
-/** Build a 2D occupancy grid, optionally ignoring one instanceId (for move validation). */
-function buildOccupancy(placed: PlacedFurniture[], ignoreId?: string): (string | null)[][] {
+/** Build a 2D occupancy grid, optionally ignoring certain instanceIds (for move validation). */
+function buildOccupancy(placed: PlacedFurniture[], ignoreId?: string, ignoreIds?: Set<string>): (string | null)[][] {
   const grid: (string | null)[][] = Array.from({ length: ROOM_ROWS }, () =>
     Array(ROOM_COLS).fill(null),
   );
   for (const p of placed) {
     if (p.instanceId === ignoreId) continue;
+    if (ignoreIds?.has(p.instanceId)) continue;
     const shape = p.item.shape;
     for (let r = 0; r < shape.length; r++) {
       for (let c = 0; c < shape[r].length; c++) {
@@ -50,7 +52,7 @@ function buildOccupancy(placed: PlacedFurniture[], ignoreId?: string): (string |
   return grid;
 }
 
-function buildAnchorPointSet(placed: PlacedFurniture[], ignoreId?: string): Set<string> {
+function buildAnchorPointSet(placed: PlacedFurniture[], ignoreId?: string, ignoreIds?: Set<string>): Set<string> {
   const set = new Set<string>();
 
   for (let c = 0; c < ROOM_COLS; c++) {
@@ -63,6 +65,7 @@ function buildAnchorPointSet(placed: PlacedFurniture[], ignoreId?: string): Set<
 
   for (const p of placed) {
     if (p.instanceId === ignoreId) continue;
+    if (ignoreIds?.has(p.instanceId)) continue;
     const shape = p.item.shape;
     for (let r = 0; r < shape.length; r++) {
       for (let c = 0; c < shape[r].length; c++) {
@@ -185,9 +188,15 @@ type DragPayload =
   | { type: 'new'; item: FurnitureItem }
   | { type: 'move'; instanceId: string; item: FurnitureItem };
 
+/** For a move drag, compute the group of shapes to highlight (target + all anchored pieces). */
+interface HoverInfo {
+  shapes: { row: number; col: number; shape: number[][] }[];
+  valid: boolean;
+}
+
 export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView }: Props) {
   const gridRef = useRef<HTMLDivElement>(null);
-  const [hoverCells, setHoverCells] = useState<{ row: number; col: number; valid: boolean; shape: number[][] } | null>(null);
+  const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);
   const dragPayloadRef = useRef<DragPayload | null>(null);
 
   const occupancy = buildOccupancy(placed);
@@ -211,38 +220,70 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
     const cell = getCellFromEvent(e);
     const payload = dragPayloadRef.current;
     if (!cell || !payload) {
-      setHoverCells(null);
+      setHoverInfo(null);
       return;
     }
-    const ignoreId = payload.type === 'move' ? payload.instanceId : undefined;
-    const occ = payload.type === 'move'
-      ? buildOccupancy(placed, ignoreId)
-      : occupancy;
-    const ap = payload.type === 'move'
-      ? buildAnchorPointSet(placed, ignoreId)
-      : anchorPoints;
-    const valid = canPlace(payload.item, cell.row, cell.col, occ, ap);
-    setHoverCells({ row: cell.row, col: cell.col, valid, shape: payload.item.shape });
+
+    if (payload.type === 'move') {
+      // Find the target piece and all anchored pieces
+      const target = placed.find(p => p.instanceId === payload.instanceId);
+      if (!target) { setHoverInfo(null); return; }
+      const anchoredIds = findAllAnchored(payload.instanceId, placed);
+      const groupIds = new Set([payload.instanceId, ...anchoredIds]);
+
+      const dRow = cell.row - target.row;
+      const dCol = cell.col - target.col;
+
+      // Build moved group positions
+      const movedGroup = placed
+        .filter(p => groupIds.has(p.instanceId))
+        .map(p => ({ item: p.item, row: p.row + dRow, col: p.col + dCol }));
+
+      // Build occupancy/anchor points excluding the entire group
+      const occ = buildOccupancy(placed, undefined, groupIds);
+      const ap = buildAnchorPointSet(placed, undefined, groupIds);
+      const valid = canPlaceGroup(movedGroup, occ, ap);
+
+      const shapes = movedGroup.map(p => ({ row: p.row, col: p.col, shape: p.item.shape }));
+      setHoverInfo({ shapes, valid });
+    } else {
+      // New item from browser
+      const valid = canPlace(payload.item, cell.row, cell.col, occupancy, anchorPoints);
+      setHoverInfo({ shapes: [{ row: cell.row, col: cell.col, shape: payload.item.shape }], valid });
+    }
   }, [getCellFromEvent, occupancy, anchorPoints, placed]);
 
   const handleDragLeave = useCallback((e: DragEvent) => {
     if (!gridRef.current?.contains(e.relatedTarget as Node)) {
-      setHoverCells(null);
+      setHoverInfo(null);
     }
   }, []);
 
   const handleDrop = useCallback((e: DragEvent) => {
     e.preventDefault();
-    setHoverCells(null);
+    setHoverInfo(null);
     const cell = getCellFromEvent(e);
     if (!cell) return;
 
     const payload = dragPayloadRef.current;
 
     if (payload?.type === 'move') {
-      const occ = buildOccupancy(placed, payload.instanceId);
-      const ap = buildAnchorPointSet(placed, payload.instanceId);
-      if (canPlace(payload.item, cell.row, cell.col, occ, ap)) {
+      const target = placed.find(p => p.instanceId === payload.instanceId);
+      if (!target) { dragPayloadRef.current = null; return; }
+      const anchoredIds = findAllAnchored(payload.instanceId, placed);
+      const groupIds = new Set([payload.instanceId, ...anchoredIds]);
+
+      const dRow = cell.row - target.row;
+      const dCol = cell.col - target.col;
+
+      const movedGroup = placed
+        .filter(p => groupIds.has(p.instanceId))
+        .map(p => ({ item: p.item, row: p.row + dRow, col: p.col + dCol }));
+
+      const occ = buildOccupancy(placed, undefined, groupIds);
+      const ap = buildAnchorPointSet(placed, undefined, groupIds);
+
+      if (canPlaceGroup(movedGroup, occ, ap)) {
         onMove(payload.instanceId, cell.row, cell.col);
       }
       dragPayloadRef.current = null;
@@ -270,12 +311,15 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
   }, []);
 
   const hoverSet = new Set<string>();
-  if (hoverCells) {
-    const { row, col, shape } = hoverCells;
-    for (let r = 0; r < shape.length; r++) {
-      for (let c = 0; c < shape[r].length; c++) {
-        if (shape[r][c] !== 1) {
-          hoverSet.add(`${row + r}-${col + c}`);
+  if (hoverInfo) {
+    for (const s of hoverInfo.shapes) {
+      for (let r = 0; r < s.shape.length; r++) {
+        for (let c = 0; c < s.shape[r].length; c++) {
+          const t = s.shape[r][c];
+          // Skip empty (1) and anchor (4) cells — don't highlight anchors
+          if (t !== 1 && t !== 4) {
+            hoverSet.add(`${s.row + r}-${s.col + c}`);
+          }
         }
       }
     }
@@ -292,7 +336,7 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
 
   const handlePieceDragEnd = useCallback(() => {
     setDraggingId(null);
-    setHoverCells(null);
+    setHoverInfo(null);
   }, []);
 
   const gridStyle: CSSProperties = {
@@ -424,11 +468,11 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
       )}
       {furnitureOverlays}
       {/* Hover highlight overlay – always on top of furniture images */}
-      {hoverCells && Array.from({ length: ROOM_ROWS }, (_, row) =>
+      {hoverInfo && Array.from({ length: ROOM_ROWS }, (_, row) =>
         Array.from({ length: ROOM_COLS }, (_, col) => {
           const key = `hover-${row}-${col}`;
           if (!hoverSet.has(`${row}-${col}`)) return null;
-          const valid = hoverCells.valid;
+          const valid = hoverInfo.valid;
           return (
             <div
               key={key}

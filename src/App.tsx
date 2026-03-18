@@ -6,6 +6,7 @@ import SplitScreenContainer from './components/SplitScreenContainer';
 import FurnitureBrowser from './components/FurnitureBrowser';
 import RoomDesignerWorkspace from './components/RoomDesignerWorkspace';
 import SaveImportModal from './components/SaveImportModal';
+import { findAllAnchored, findAnchoredPieces, wouldCollide } from './utils/anchorHelpers';
 
 const allFurniture: FurnitureItem[] = (furnitureData as RawFurnitureItem[]).map((item, index) => ({
   ...item,
@@ -113,11 +114,66 @@ function App() {
   }, []);
 
   const handleRemoveFurniture = useCallback((instanceId: string) => {
-    setPlaced((prev) => prev.filter((p) => p.instanceId !== instanceId));
+    setPlaced((prev) => {
+      const cascadeIds = findAnchoredPieces(instanceId, prev);
+      const removeSet = new Set([instanceId, ...cascadeIds]);
+      return prev.filter((p) => !removeSet.has(p.instanceId));
+    });
   }, []);
 
-  const handleMoveFurniture = useCallback((instanceId: string, row: number, col: number) => {
-    setPlaced((prev) => prev.map((p) => p.instanceId === instanceId ? { ...p, row, col } : p));
+  const handleMoveFurniture = useCallback((instanceId: string, newRow: number, newCol: number) => {
+    setPlaced((prev) => {
+      const target = prev.find(p => p.instanceId === instanceId);
+      if (!target) return prev;
+
+      const dRow = newRow - target.row;
+      const dCol = newCol - target.col;
+
+      // Recursively find ALL pieces anchored to the moving piece
+      const anchoredIds = findAllAnchored(instanceId, prev);
+      const movedIds = new Set([instanceId, ...anchoredIds]);
+
+      // Move the target and all anchored pieces by the same delta
+      let next = prev.map(p =>
+        movedIds.has(p.instanceId)
+          ? { ...p, row: p.row + (p.instanceId === instanceId ? newRow - target.row : dRow), col: p.col + (p.instanceId === instanceId ? newCol - target.col : dCol) }
+          : p
+      );
+
+      // Build occupancy from non-moved pieces to check collisions
+      const occupiedByOthers = new Set<string>();
+      for (const p of next) {
+        if (movedIds.has(p.instanceId)) continue;
+        for (let r = 0; r < p.item.shape.length; r++) {
+          for (let c = 0; c < p.item.shape[r].length; c++) {
+            const t = p.item.shape[r][c];
+            if (t === 2 || t === 3) {
+              occupiedByOthers.add(`${p.row + r},${p.col + c}`);
+            }
+          }
+        }
+      }
+
+      // Remove anchored pieces that now collide or are out of bounds
+      const toRemove = new Set<string>();
+      for (const aid of anchoredIds) {
+        const piece = next.find(p => p.instanceId === aid)!;
+        if (wouldCollide(piece.item, piece.row, piece.col, occupiedByOthers)) {
+          toRemove.add(aid);
+        }
+      }
+
+      if (toRemove.size > 0) {
+        // Also cascade-remove anything anchored to the colliding pieces
+        for (const rid of toRemove) {
+          const cascaded = findAnchoredPieces(rid, next);
+          for (const cid of cascaded) toRemove.add(cid);
+        }
+        next = next.filter(p => !toRemove.has(p.instanceId));
+      }
+
+      return next;
+    });
   }, []);
 
   const handleSortChange = useCallback((field: SortField) => {
