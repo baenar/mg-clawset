@@ -391,8 +391,6 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
       {Array.from({ length: ROOM_ROWS }, (_, row) =>
         Array.from({ length: ROOM_COLS }, (_, col) => {
           const key = `${row}-${col}`;
-          const isHovered = hoverSet.has(key);
-          const hovValid = hoverCells?.valid ?? false;
           const occupant = occupancy[row][col];
           const shapeType = shapeTypeGrid?.[row][col];
 
@@ -411,11 +409,7 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
               key={key}
               style={{
                 ...cellBase,
-                background: isHovered
-                  ? hovValid
-                    ? 'rgba(100,200,100,0.25)'
-                    : 'rgba(200,100,100,0.25)'
-                  : bg,
+                background: bg,
                 border: `1px solid ${borderColor}`,
                 cursor: expertView && occupant ? 'pointer' : 'default',
               }}
@@ -429,6 +423,33 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
         }),
       )}
       {furnitureOverlays}
+      {/* Hover highlight overlay – always on top of furniture images */}
+      {hoverCells && Array.from({ length: ROOM_ROWS }, (_, row) =>
+        Array.from({ length: ROOM_COLS }, (_, col) => {
+          const key = `hover-${row}-${col}`;
+          if (!hoverSet.has(`${row}-${col}`)) return null;
+          const valid = hoverCells.valid;
+          return (
+            <div
+              key={key}
+              style={{
+                position: 'absolute',
+                left: `${(col / ROOM_COLS) * 100}%`,
+                top: `${(row / ROOM_ROWS) * 100}%`,
+                width: `${(1 / ROOM_COLS) * 100}%`,
+                height: `${(1 / ROOM_ROWS) * 100}%`,
+                background: valid
+                  ? 'rgba(100,200,100,0.35)'
+                  : 'rgba(200,100,100,0.35)',
+                border: `2px solid ${valid ? 'rgba(100,200,100,0.7)' : 'rgba(200,100,100,0.7)'}`,
+                zIndex: 10,
+                pointerEvents: 'none',
+                boxSizing: 'border-box',
+              }}
+            />
+          );
+        }),
+      )}
     </div>
   );
 }
