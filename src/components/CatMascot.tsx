@@ -151,9 +151,10 @@ const bubbleStyle = (visible: boolean): CSSProperties => ({
 
 interface Props {
   compact?: boolean;
+  isMobile?: boolean;
 }
 
-export default function CatMascot({ compact }: Props) {
+export default function CatMascot({ compact, isMobile }: Props) {
   const [helpOpen, setHelpOpen] = useState(true);
   const [helpVisible, setHelpVisible] = useState(false); // for animation
   const [helpDismissed, setHelpDismissed] = useState(false);
@@ -299,15 +300,21 @@ export default function CatMascot({ compact }: Props) {
 
             <div style={sectionStyle}>
               <div style={headingStyle}>Room Designer</div>
-              <ul style={{ margin: 0, paddingLeft: 18, color: 'var(--text)' }}>
-                <li>Click the <b>arrow button</b> on the right edge to open the room planner.</li>
-                <li><b>Drag furniture images</b> from the list onto the grid to place them.</li>
-                <li>Furniture snaps to the grid based on its shape. Invalid placements are shown in red.</li>
-                <li><b>Drag placed furniture</b> to move it — connected pieces move together.</li>
-                <li><b>Click placed furniture</b> to remove it (anchored items are removed too).</li>
-                <li>Toggle <b>Expert View</b> to see cell types (solid, anchor point, anchor, background).</li>
-                <li>Stats summary at the top shows your room's total appeal, comfort, etc.</li>
-              </ul>
+              {isMobile ? (
+                <div style={{ padding: '8px 12px', borderRadius: 8, background: 'var(--accent-bg)', color: 'var(--text)', fontSize: 13, lineHeight: 1.6 }}>
+                  The Room Designer requires drag-and-drop and is available on <b>desktop/laptop</b> only. Visit this site on a PC to design your room!
+                </div>
+              ) : (
+                <ul style={{ margin: 0, paddingLeft: 18, color: 'var(--text)' }}>
+                  <li>Click the <b>arrow button</b> on the right edge to open the room planner.</li>
+                  <li><b>Drag furniture images</b> from the list onto the grid to place them.</li>
+                  <li>Furniture snaps to the grid based on its shape. Invalid placements are shown in red.</li>
+                  <li><b>Drag placed furniture</b> to move it — connected pieces move together.</li>
+                  <li><b>Click placed furniture</b> to remove it (anchored items are removed too).</li>
+                  <li>Toggle <b>Expert View</b> to see cell types (solid, anchor point, anchor, background).</li>
+                  <li>Stats summary at the top shows your room's total appeal, comfort, etc.</li>
+                </ul>
+              )}
             </div>
 
             <div style={sectionStyle}>

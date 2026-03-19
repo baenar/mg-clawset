@@ -39,11 +39,55 @@ interface Props {
   sort: SortConfig;
   onSortChange: (field: SortField) => void;
   compact?: boolean;
+  isMobile?: boolean;
 }
 
-export default function FilterHeader({ filters, onFiltersChange, sort, onSortChange, compact }: Props) {
+export default function FilterHeader({ filters, onFiltersChange, sort, onSortChange, compact, isMobile }: Props) {
   const update = (partial: Partial<Filters>) =>
     onFiltersChange({ ...filters, ...partial });
+
+  if (isMobile) {
+    return (
+      <div style={{ ...styles.wrapper, position: 'sticky', top: 0, zIndex: 10 }}>
+        {/* Row 1: Cat + Name sort + Search */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px' }}>
+          <CatMascot compact={false} isMobile />
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <SortButton label="Name" active={sort.field === 'name'} direction={sort.direction} onClick={() => onSortChange('name')} />
+            <SearchInput value={filters.name} onChange={(v) => update({ name: v })} />
+          </div>
+        </div>
+        {/* Row 2: Stat sort + filter icons in a single compact row */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(5, 1fr) auto',
+          alignItems: 'center',
+          gap: 4,
+          padding: '0 12px',
+        }}>
+          {statColumns.map((col) => (
+            <div key={col.field} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+              <SortButton
+                label={<StatIcon stat={col.stat} size={16} />}
+                active={sort.field === col.field}
+                direction={sort.direction}
+                onClick={() => onSortChange(col.field)}
+              />
+              <StatFilter
+                label={col.label}
+                value={filters[col.filterKey] as number}
+                onChange={(v) => update({ [col.filterKey]: v })}
+              />
+            </div>
+          ))}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+            <SortButton label="Owned" active={sort.field === 'owned'} direction={sort.direction} onClick={() => onSortChange('owned')} />
+            <ToggleSwitch checked={filters.onlyOwned} onChange={(v) => update({ onlyOwned: v })} label="" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const headerGrid: CSSProperties = {
     display: 'grid',

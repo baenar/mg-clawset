@@ -15,5 +15,9 @@ interface Props {
 }
 
 export default function SplitScreenContainer({ children }: Props) {
-  return <div style={styles.container}>{children}</div>;
+  return (
+    <div className="split-screen-container" style={styles.container}>
+      {children}
+    </div>
+  );
 }

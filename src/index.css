@@ -62,3 +62,18 @@ body {
   height: 100vh;
   overflow: hidden;
 }
+
+/* ===== Mobile-friendly overrides ===== */
+@media (max-width: 768px) {
+  #root {
+    overflow: visible;
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .split-screen-container {
+    flex-direction: column !important;
+    padding: 8px !important;
+    height: auto !important;
+  }
+}

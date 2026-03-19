@@ -72,6 +72,7 @@ interface Props {
   onPageChange: (page: number) => void;
   compact?: boolean;
   onImportClick: () => void;
+  isMobile?: boolean;
 }
 
 export default function FurnitureList({
@@ -85,10 +86,14 @@ export default function FurnitureList({
   onPageChange,
   compact,
   onImportClick,
+  isMobile,
 }: Props) {
   return (
     <>
-      <div style={styles.list}>
+      <div style={{
+        ...styles.list,
+        ...(isMobile ? { flex: 'none', overflowY: 'visible' } : {}),
+      }}>
         {items.length === 0 ? (
           <div style={styles.empty}>No furniture matches your filters.</div>
         ) : (
@@ -100,11 +105,15 @@ export default function FurnitureList({
               onIncrement={() => onIncrement(item.id)}
               onDecrement={() => onDecrement(item.id)}
               compact={compact}
+              isMobile={isMobile}
             />
           ))
         )}
       </div>
-      <div style={styles.paginationRow}>
+      <div style={{
+        ...styles.paginationRow,
+        ...(isMobile ? { flexDirection: 'column', gap: 8, padding: '10px 12px' } : {}),
+      }}>
         <button
           style={styles.importButton}
           onClick={onImportClick}

@@ -7,6 +7,7 @@ import FurnitureBrowser from './components/FurnitureBrowser';
 import RoomDesignerWorkspace from './components/RoomDesignerWorkspace';
 import SaveImportModal from './components/SaveImportModal';
 import { findAllAnchored, findAnchoredPieces, wouldCollide } from './utils/anchorHelpers';
+import useIsMobile from './hooks/useIsMobile';
 
 const allFurniture: FurnitureItem[] = (furnitureData as RawFurnitureItem[]).map((item, index) => ({
   ...item,
@@ -92,6 +93,7 @@ const layoutStyles: Record<string, CSSProperties> = {
 };
 
 function App() {
+  const isMobile = useIsMobile();
   const [filters, setFilters] = useState<Filters>(defaultFilters);
   const [sort, setSort] = useState<SortConfig>(defaultSort);
   const [ownership, setOwnership] = useState<Record<string, number>>(loadOwnership);
@@ -99,6 +101,11 @@ function App() {
   const [page, setPage] = useState(0);
   const [placed, setPlaced] = useState<PlacedFurniture[]>(loadRoom);
   const [importModalOpen, setImportModalOpen] = useState(false);
+
+  // Force collapse room designer on mobile
+  useEffect(() => {
+    if (isMobile && expanded) setExpanded(false);
+  }, [isMobile, expanded]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(ownership));
@@ -241,12 +248,16 @@ function App() {
   );
 
   return (
-    <div style={layoutStyles.main}>
+    <div style={{
+      ...layoutStyles.main,
+      ...(isMobile ? { height: 'auto', minHeight: '100vh', overflow: 'visible' } : {}),
+    }}>
       <SplitScreenContainer>
         <div
           style={{
             ...layoutStyles.browserWrapper,
-            width: expanded ? '38%' : 'calc(100% - 24px)',
+            width: isMobile ? '100%' : expanded ? '38%' : 'calc(100% - 24px)',
+            ...(isMobile ? { height: 'auto', overflow: 'visible', transition: 'none', position: 'static' as const } : {}),
           }}
         >
           <FurnitureBrowser
@@ -265,15 +276,18 @@ function App() {
             totalPages={totalPages}
             onPageChange={setPage}
             onImportClick={() => setImportModalOpen(true)}
+            isMobile={isMobile}
           />
         </div>
-        <RoomDesignerWorkspace
-          visible={expanded}
-          placed={placed}
-          onPlace={handlePlaceFurniture}
-          onRemove={handleRemoveFurniture}
-          onMove={handleMoveFurniture}
-        />
+        {!isMobile && (
+          <RoomDesignerWorkspace
+            visible={expanded}
+            placed={placed}
+            onPlace={handlePlaceFurniture}
+            onRemove={handleRemoveFurniture}
+            onMove={handleMoveFurniture}
+          />
+        )}
       </SplitScreenContainer>
       <SaveImportModal
         open={importModalOpen}

@@ -32,9 +32,36 @@ interface Props {
   onIncrement: () => void;
   onDecrement: () => void;
   compact?: boolean;
+  isMobile?: boolean;
 }
 
-export default function FurnitureCard({ item, owned, onIncrement, onDecrement, compact }: Props) {
+export default function FurnitureCard({ item, owned, onIncrement, onDecrement, compact, isMobile }: Props) {
+  if (isMobile) {
+    return (
+      <div style={{
+        ...baseCard,
+        display: 'flex',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        padding: '8px 10px',
+      }}>
+        <FurnitureImage src={item.image_url} alt={item.name} compact />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ ...nameStyle, fontSize: 13, marginBottom: 4 }} title={item.name}>{item.name}</div>
+          <div style={{ display: 'flex', gap: 8, fontSize: 11, color: 'var(--text)', flexWrap: 'wrap' }}>
+            <span>A:{item.appeal}</span>
+            <span>C:{item.comfort}</span>
+            <span>S:{item.stimulation}</span>
+            <span>H:{item.health}</span>
+            <span>M:{item.mutation}</span>
+          </div>
+        </div>
+        <OwnershipCounter count={owned} onIncrement={onIncrement} onDecrement={onDecrement} compact />
+      </div>
+    );
+  }
+
   return (
     <div style={{ ...baseCard, gridTemplateColumns: compact ? GRID_COMPACT : GRID_FULL, gap: compact ? 8 : 0 }}>
       <FurnitureImage src={item.image_url} alt={item.name} compact={compact} draggableItem={item} />

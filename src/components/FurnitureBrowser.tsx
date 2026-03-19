@@ -34,6 +34,7 @@ interface Props {
   totalPages: number;
   onPageChange: (page: number) => void;
   onImportClick: () => void;
+  isMobile?: boolean;
 }
 
 export default function FurnitureBrowser({
@@ -52,15 +53,20 @@ export default function FurnitureBrowser({
   totalPages,
   onPageChange,
   onImportClick,
+  isMobile,
 }: Props) {
   return (
-    <div style={styles.browser}>
+    <div style={{
+      ...styles.browser,
+      ...(isMobile ? { height: 'auto', overflow: 'visible', position: 'static' as const } : {}),
+    }}>
       <FilterHeader
         filters={filters}
         onFiltersChange={onFiltersChange}
         sort={sort}
         onSortChange={onSortChange}
         compact={expanded}
+        isMobile={isMobile}
       />
       <FurnitureList
         items={items}
@@ -73,8 +79,9 @@ export default function FurnitureBrowser({
         onPageChange={onPageChange}
         compact={expanded}
         onImportClick={onImportClick}
+        isMobile={isMobile}
       />
-      <ViewToggleButton expanded={expanded} onClick={onToggle} />
+      {!isMobile && <ViewToggleButton expanded={expanded} onClick={onToggle} />}
     </div>
   );
 }
