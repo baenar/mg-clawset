@@ -320,7 +320,7 @@ export default function AdvancedFilters({
                                 justifyContent: isStacked ? 'center' : undefined,
                             }}>
                                 <div style={{display: 'flex', alignItems: 'center', gap: 8}}>
-                                    <span style={labelS}>{compact ? '/space' : 'Stats/space'}</span>
+                                    <span style={labelS}>Stats/space</span>
                                     <ButtonToggle
                                         options={[{value: 'off', label: 'Off'}, {value: 'on', label: 'On'}]}
                                         value={statsPerSpace ? 'on' : 'off'}
