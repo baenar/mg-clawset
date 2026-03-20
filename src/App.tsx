@@ -9,10 +9,33 @@ import SaveImportModal from './components/SaveImportModal';
 import { findAllAnchored, findAnchoredPieces, wouldCollide } from './utils/anchorHelpers';
 import useIsMobile from './hooks/useIsMobile';
 
-const allFurniture: FurnitureItem[] = (furnitureData as RawFurnitureItem[]).map((item, index) => ({
-  ...item,
-  id: `${item.name}__${index}`,
-}));
+function countSpaces(shape: number[][]): number {
+  let count = 0;
+  for (const row of shape) {
+    for (const cell of row) {
+      if (cell === 2 || cell === 3) count++; // solid + anchor point
+    }
+  }
+  return Math.max(count, 1); // avoid division by zero
+}
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+const allFurniture: FurnitureItem[] = (furnitureData as RawFurnitureItem[]).map((item, index) => {
+  const spaces = countSpaces(item.shape);
+  return {
+    ...item,
+    id: `${item.name}__${index}`,
+    spacesOccupied: spaces,
+    appealPerSpace: round2(item.appeal / spaces),
+    comfortPerSpace: round2(item.comfort / spaces),
+    stimulationPerSpace: round2(item.stimulation / spaces),
+    healthPerSpace: round2(item.health / spaces),
+    mutationPerSpace: round2(item.mutation / spaces),
+  };
+});
 
 // Map for save file import matching:
 // 1. lowercase display name -> id
@@ -42,6 +65,10 @@ const defaultFilters: Filters = {
   minHealth: -20,
   minMutation: -20,
   onlyOwned: false,
+  shapeWidth: null,
+  shapeHeight: null,
+  exactShape: null,
+  anchorFilter: 'any',
 };
 
 const defaultSort: SortConfig = { field: 'name', direction: 'asc' };
@@ -101,6 +128,7 @@ function App() {
   const [page, setPage] = useState(0);
   const [placed, setPlaced] = useState<PlacedFurniture[]>(loadRoom);
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [statsPerSpace, setStatsPerSpace] = useState(false);
 
   // Force collapse room designer on mobile
   useEffect(() => {
@@ -221,8 +249,53 @@ function App() {
       if (item.health < filters.minHealth) return false;
       if (item.mutation < filters.minMutation) return false;
       if (filters.onlyOwned && !(ownership[item.id] > 0)) return false;
+      // Anchor filter
+      if (filters.anchorFilter !== 'any') {
+        const hasAnchor = item.shape.some(row => row.some(c => c === 4));
+        if (filters.anchorFilter === 'anchored' && !hasAnchor) return false;
+        if (filters.anchorFilter === 'not-anchored' && hasAnchor) return false;
+      }
+      // Compute bounding box excluding anchors and empty cells
+      let minR = item.shape.length, maxR = -1, minC = Infinity, maxC = -1;
+      for (let r = 0; r < item.shape.length; r++) {
+        for (let c = 0; c < item.shape[r].length; c++) {
+          if (item.shape[r][c] !== 1 && item.shape[r][c] !== 4) {
+            if (r < minR) minR = r;
+            if (r > maxR) maxR = r;
+            if (c < minC) minC = c;
+            if (c > maxC) maxC = c;
+          }
+        }
+      }
+      const effectiveW = maxR === -1 ? 0 : maxC - minC + 1;
+      const effectiveH = maxR === -1 ? 0 : maxR - minR + 1;
+      // Shape dimension filter
+      if (filters.shapeWidth !== null || filters.shapeHeight !== null) {
+        if (filters.shapeWidth !== null && effectiveW !== filters.shapeWidth) return false;
+        if (filters.shapeHeight !== null && effectiveH !== filters.shapeHeight) return false;
+      }
+      // Exact shape filter — offset to effective bounding box
+      if (filters.exactShape) {
+        const es = filters.exactShape;
+        for (let r = 0; r < es.length; r++) {
+          for (let c = 0; c < es[r].length; c++) {
+            const required = es[r][c];
+            if (required === null) continue; // any value ok
+            const actual = item.shape[minR + r]?.[minC + c] ?? 1;
+            if (actual !== required) return false;
+          }
+        }
+      }
       return true;
     });
+
+    const perSpaceKey: Record<string, keyof FurnitureItem> = {
+      appeal: 'appealPerSpace',
+      comfort: 'comfortPerSpace',
+      stimulation: 'stimulationPerSpace',
+      health: 'healthPerSpace',
+      mutation: 'mutationPerSpace',
+    };
 
     result = [...result].sort((a, b) => {
       const dir = sort.direction === 'asc' ? 1 : -1;
@@ -232,13 +305,14 @@ function App() {
       if (sort.field === 'owned') {
         return dir * ((ownership[a.id] || 0) - (ownership[b.id] || 0));
       }
-      const diff = a[sort.field] - b[sort.field];
+      const key = statsPerSpace ? perSpaceKey[sort.field] ?? sort.field : sort.field;
+      const diff = (a[key] as number) - (b[key] as number);
       if (diff !== 0) return dir * diff;
       return a.name.localeCompare(b.name);
     });
 
     return result;
-  }, [filters, sort, ownership]);
+  }, [filters, sort, ownership, statsPerSpace]);
 
   const totalPages = Math.max(1, Math.ceil(filteredAndSorted.length / ITEMS_PER_PAGE));
   const clampedPage = Math.min(page, totalPages - 1);
@@ -277,6 +351,8 @@ function App() {
             onPageChange={setPage}
             onImportClick={() => setImportModalOpen(true)}
             isMobile={isMobile}
+            statsPerSpace={statsPerSpace}
+            onStatsPerSpaceChange={setStatsPerSpace}
           />
         </div>
         {!isMobile && (

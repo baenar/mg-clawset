@@ -73,6 +73,7 @@ interface Props {
   compact?: boolean;
   onImportClick: () => void;
   isMobile?: boolean;
+  statsPerSpace?: boolean;
 }
 
 export default function FurnitureList({
@@ -87,6 +88,7 @@ export default function FurnitureList({
   compact,
   onImportClick,
   isMobile,
+  statsPerSpace,
 }: Props) {
   return (
     <>
@@ -106,6 +108,7 @@ export default function FurnitureList({
               onDecrement={() => onDecrement(item.id)}
               compact={compact}
               isMobile={isMobile}
+              statsPerSpace={statsPerSpace}
             />
           ))
         )}

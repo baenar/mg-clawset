@@ -6,6 +6,7 @@ import ToggleSwitch from './ToggleSwitch';
 import SortButton from './SortButton';
 import StatIcon from './StatIcon';
 import CatMascot from './CatMascot';
+import AdvancedFilters from './AdvancedFilters';
 
 const GRID_FULL = '56px 48px minmax(120px, 1fr) repeat(5, 60px) 90px';
 const GRID_COMPACT = '36px 28px minmax(40px, 1fr) repeat(5, 28px) 68px';
@@ -40,9 +41,11 @@ interface Props {
   onSortChange: (field: SortField) => void;
   compact?: boolean;
   isMobile?: boolean;
+  statsPerSpace: boolean;
+  onStatsPerSpaceChange: (v: boolean) => void;
 }
 
-export default function FilterHeader({ filters, onFiltersChange, sort, onSortChange, compact, isMobile }: Props) {
+export default function FilterHeader({ filters, onFiltersChange, sort, onSortChange, compact, isMobile, statsPerSpace, onStatsPerSpaceChange }: Props) {
   const update = (partial: Partial<Filters>) =>
     onFiltersChange({ ...filters, ...partial });
 
@@ -85,6 +88,14 @@ export default function FilterHeader({ filters, onFiltersChange, sort, onSortCha
             <ToggleSwitch checked={filters.onlyOwned} onChange={(v) => update({ onlyOwned: v })} label="" />
           </div>
         </div>
+        <AdvancedFilters
+          filters={filters}
+          onFiltersChange={onFiltersChange}
+          statsPerSpace={statsPerSpace}
+          onStatsPerSpaceChange={onStatsPerSpaceChange}
+          compact
+          isMobile
+        />
       </div>
     );
   }
@@ -139,6 +150,13 @@ export default function FilterHeader({ filters, onFiltersChange, sort, onSortCha
           label={compact ? '' : 'Only'}
         />
       </div>
+      <AdvancedFilters
+        filters={filters}
+        onFiltersChange={onFiltersChange}
+        statsPerSpace={statsPerSpace}
+        onStatsPerSpaceChange={onStatsPerSpaceChange}
+        compact={compact}
+      />
     </div>
   );
 }

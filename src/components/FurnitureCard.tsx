@@ -33,9 +33,16 @@ interface Props {
   onDecrement: () => void;
   compact?: boolean;
   isMobile?: boolean;
+  statsPerSpace?: boolean;
 }
 
-export default function FurnitureCard({ item, owned, onIncrement, onDecrement, compact, isMobile }: Props) {
+export default function FurnitureCard({ item, owned, onIncrement, onDecrement, compact, isMobile, statsPerSpace }: Props) {
+  const apl = statsPerSpace ? item.appealPerSpace : item.appeal;
+  const cmf = statsPerSpace ? item.comfortPerSpace : item.comfort;
+  const stm = statsPerSpace ? item.stimulationPerSpace : item.stimulation;
+  const hlt = statsPerSpace ? item.healthPerSpace : item.health;
+  const mut = statsPerSpace ? item.mutationPerSpace : item.mutation;
+
   if (isMobile) {
     return (
       <div style={{
@@ -50,11 +57,11 @@ export default function FurnitureCard({ item, owned, onIncrement, onDecrement, c
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ ...nameStyle, fontSize: 13, marginBottom: 4 }} title={item.name}>{item.name}</div>
           <div style={{ display: 'flex', gap: 8, fontSize: 11, color: 'var(--text)', flexWrap: 'wrap' }}>
-            <span>A:{item.appeal}</span>
-            <span>C:{item.comfort}</span>
-            <span>S:{item.stimulation}</span>
-            <span>H:{item.health}</span>
-            <span>M:{item.mutation}</span>
+            <span>A:{apl}</span>
+            <span>C:{cmf}</span>
+            <span>S:{stm}</span>
+            <span>H:{hlt}</span>
+            <span>M:{mut}</span>
           </div>
         </div>
         <OwnershipCounter count={owned} onIncrement={onIncrement} onDecrement={onDecrement} compact />
@@ -67,11 +74,11 @@ export default function FurnitureCard({ item, owned, onIncrement, onDecrement, c
       <FurnitureImage src={item.image_url} alt={item.name} compact={compact} draggableItem={item} />
       <ShapeVisualizer shape={item.shape} compact={compact} />
       <div style={nameStyle} title={item.name}>{item.name}</div>
-      <StatDisplay value={item.appeal} compact={compact} />
-      <StatDisplay value={item.comfort} compact={compact} />
-      <StatDisplay value={item.stimulation} compact={compact} />
-      <StatDisplay value={item.health} compact={compact} />
-      <StatDisplay value={item.mutation} compact={compact} />
+      <StatDisplay value={apl} compact={compact} />
+      <StatDisplay value={cmf} compact={compact} />
+      <StatDisplay value={stm} compact={compact} />
+      <StatDisplay value={hlt} compact={compact} />
+      <StatDisplay value={mut} compact={compact} />
       <OwnershipCounter count={owned} onIncrement={onIncrement} onDecrement={onDecrement} compact={compact} />
     </div>
   );

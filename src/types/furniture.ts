@@ -11,6 +11,12 @@ export interface RawFurnitureItem {
 
 export interface FurnitureItem extends RawFurnitureItem {
   id: string;
+  spacesOccupied: number;
+  appealPerSpace: number;
+  comfortPerSpace: number;
+  stimulationPerSpace: number;
+  healthPerSpace: number;
+  mutationPerSpace: number;
 }
 
 export type StatKey = 'appeal' | 'comfort' | 'stimulation' | 'health' | 'mutation';
@@ -26,6 +32,10 @@ export interface Filters {
   minHealth: number;
   minMutation: number;
   onlyOwned: boolean;
+  shapeWidth: number | null;
+  shapeHeight: number | null;
+  exactShape: (number | null)[][] | null;
+  anchorFilter: 'any' | 'anchored' | 'not-anchored';
 }
 
 export interface SortConfig {

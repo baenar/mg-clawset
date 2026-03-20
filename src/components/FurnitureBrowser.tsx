@@ -35,6 +35,8 @@ interface Props {
   onPageChange: (page: number) => void;
   onImportClick: () => void;
   isMobile?: boolean;
+  statsPerSpace: boolean;
+  onStatsPerSpaceChange: (v: boolean) => void;
 }
 
 export default function FurnitureBrowser({
@@ -54,6 +56,8 @@ export default function FurnitureBrowser({
   onPageChange,
   onImportClick,
   isMobile,
+  statsPerSpace,
+  onStatsPerSpaceChange,
 }: Props) {
   return (
     <div style={{
@@ -67,6 +71,8 @@ export default function FurnitureBrowser({
         onSortChange={onSortChange}
         compact={expanded}
         isMobile={isMobile}
+        statsPerSpace={statsPerSpace}
+        onStatsPerSpaceChange={onStatsPerSpaceChange}
       />
       <FurnitureList
         items={items}
@@ -80,6 +86,7 @@ export default function FurnitureBrowser({
         compact={expanded}
         onImportClick={onImportClick}
         isMobile={isMobile}
+        statsPerSpace={statsPerSpace}
       />
       {!isMobile && <ViewToggleButton expanded={expanded} onClick={onToggle} />}
     </div>
