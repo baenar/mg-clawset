@@ -37,6 +37,7 @@ interface Props {
   isMobile?: boolean;
   statsPerSpace: boolean;
   onStatsPerSpaceChange: (v: boolean) => void;
+  usedCounts: Record<string, number>;
 }
 
 export default function FurnitureBrowser({
@@ -58,6 +59,7 @@ export default function FurnitureBrowser({
   isMobile,
   statsPerSpace,
   onStatsPerSpaceChange,
+  usedCounts,
 }: Props) {
   return (
     <div style={{
@@ -73,6 +75,7 @@ export default function FurnitureBrowser({
         isMobile={isMobile}
         statsPerSpace={statsPerSpace}
         onStatsPerSpaceChange={onStatsPerSpaceChange}
+        showRemaining={expanded}
       />
       <FurnitureList
         items={items}
@@ -87,6 +90,7 @@ export default function FurnitureBrowser({
         onImportClick={onImportClick}
         isMobile={isMobile}
         statsPerSpace={statsPerSpace}
+        usedCounts={expanded ? usedCounts : undefined}
       />
       {!isMobile && <ViewToggleButton expanded={expanded} onClick={onToggle} />}
     </div>

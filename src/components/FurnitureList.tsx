@@ -74,6 +74,7 @@ interface Props {
   onImportClick: () => void;
   isMobile?: boolean;
   statsPerSpace?: boolean;
+  usedCounts?: Record<string, number>;
 }
 
 export default function FurnitureList({
@@ -89,6 +90,7 @@ export default function FurnitureList({
   onImportClick,
   isMobile,
   statsPerSpace,
+  usedCounts,
 }: Props) {
   return (
     <>
@@ -109,6 +111,7 @@ export default function FurnitureList({
               compact={compact}
               isMobile={isMobile}
               statsPerSpace={statsPerSpace}
+              remaining={usedCounts ? (ownership[item.id] || 0) - (usedCounts[item.id] || 0) : undefined}
             />
           ))
         )}

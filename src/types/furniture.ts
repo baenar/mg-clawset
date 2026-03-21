@@ -21,7 +21,7 @@ export interface FurnitureItem extends RawFurnitureItem {
 
 export type StatKey = 'appeal' | 'comfort' | 'stimulation' | 'health' | 'mutation';
 
-export type SortField = 'name' | StatKey | 'owned';
+export type SortField = 'name' | StatKey | 'owned' | 'remaining';
 export type SortDirection = 'asc' | 'desc';
 
 export interface Filters {
@@ -36,6 +36,7 @@ export interface Filters {
   shapeHeight: number | null;
   exactShape: (number | null)[][] | null;
   anchorFilter: 'any' | 'anchored' | 'not-anchored';
+  onlyRemaining: boolean;
 }
 
 export interface SortConfig {

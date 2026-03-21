@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import type { CSSProperties } from 'react';
 import type { FurnitureItem, PlacedFurniture } from '../types/furniture';
 import RoomGrid from './RoomGrid';
 import RoomStatsSummary from './RoomStatsSummary';
+import { captureRoom, captureHouse } from '../utils/roomCapture';
 
 const LEGEND: { type: number; color: string; border: string; label: string }[] = [
   { type: 2, color: 'var(--lavender-grey)', border: 'rgba(132,143,165,0.5)', label: 'Solid' },
@@ -11,16 +12,31 @@ const LEGEND: { type: number; color: string; border: string; label: string }[] =
   { type: 5, color: 'var(--charcoal)', border: 'rgba(76,76,71,0.5)', label: 'Background' },
 ];
 
+interface RoomExportEntry {
+  id: string;
+  row: number;
+  col: number;
+}
+
 interface Props {
   visible: boolean;
   placed: PlacedFurniture[];
+  rooms: PlacedFurniture[][];
+  activeRoom: number;
+  onActiveRoomChange: (i: number) => void;
   onPlace: (item: FurnitureItem, row: number, col: number) => void;
   onRemove: (instanceId: string) => void;
   onMove: (instanceId: string, row: number, col: number) => void;
+  onImportRooms: (entries: RoomExportEntry[][]) => void;
+  ownership: Record<string, number>;
 }
 
-export default function RoomDesignerWorkspace({ visible, placed, onPlace, onRemove, onMove }: Props) {
+export default function RoomDesignerWorkspace({
+  visible, placed, rooms, activeRoom, onActiveRoomChange,
+  onPlace, onRemove, onMove, onImportRooms, ownership,
+}: Props) {
   const [expertView, setExpertView] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const containerStyle: CSSProperties = {
     display: 'flex',
@@ -73,13 +89,75 @@ export default function RoomDesignerWorkspace({ visible, placed, onPlace, onRemo
     flexShrink: 0,
   };
 
+  const smallBtn: CSSProperties = {
+    padding: '5px 10px',
+    borderRadius: 8,
+    border: '1px solid var(--border)',
+    background: 'var(--social-bg)',
+    color: 'var(--text-h)',
+    fontFamily: 'var(--font)',
+    fontSize: 12,
+    fontWeight: 500,
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+  };
+
+  const handleExport = () => {
+    const data: RoomExportEntry[][] = rooms.map(room =>
+      room.map(p => ({ id: p.item.id, row: p.row, col: p.col }))
+    );
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'room-layouts.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(reader.result as string);
+        if (Array.isArray(parsed)) {
+          // Support both old single-room format and new multi-room format
+          if (parsed.length > 0 && Array.isArray(parsed[0])) {
+            // Multi-room: [[{id,row,col},...], ...]
+            onImportRooms(parsed as RoomExportEntry[][]);
+          } else {
+            // Single-room legacy: [{id,row,col},...]
+            onImportRooms([parsed as RoomExportEntry[]]);
+          }
+        }
+      } catch { /* ignore invalid files */ }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
   if (!visible) return <div style={containerStyle} />;
 
   return (
     <div style={containerStyle}>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json"
+        style={{ display: 'none' }}
+        onChange={handleImportFile}
+      />
       <div style={headerStyle}>
-        <RoomStatsSummary placed={placed} />
-        <button style={toggleBtn} onClick={() => setExpertView((v) => !v)}>
+        <RoomStatsSummary
+          rooms={rooms}
+          activeRoom={activeRoom}
+          onActiveRoomChange={onActiveRoomChange}
+          ownership={ownership}
+        />
+        <button style={{ ...toggleBtn, alignSelf: 'flex-start' }} onClick={() => setExpertView((v) => !v)}>
           {expertView ? 'Image View' : 'Expert View'}
         </button>
       </div>
@@ -108,6 +186,32 @@ export default function RoomDesignerWorkspace({ visible, placed, onPlace, onRemo
           ))}
         </div>
       )}
+      {/* Bottom bar: save pic + export/import */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 8,
+        flexShrink: 0,
+        flexWrap: 'wrap',
+      }}>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <button style={smallBtn} onClick={() => captureRoom(rooms, activeRoom)} title="Save image of current room">
+            Save image of a room
+          </button>
+          <button style={smallBtn} onClick={() => captureHouse(rooms)} title="Save image of all rooms">
+            Save image of a house
+          </button>
+        </div>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <button style={smallBtn} onClick={handleExport} title="Export all room layouts as JSON">
+            Export to file
+          </button>
+          <button style={smallBtn} onClick={() => fileInputRef.current?.click()} title="Import room layouts from JSON">
+            Import from file
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

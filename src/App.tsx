@@ -69,29 +69,49 @@ const defaultFilters: Filters = {
   shapeHeight: null,
   exactShape: null,
   anchorFilter: 'any',
+  onlyRemaining: false,
 };
 
 const defaultSort: SortConfig = { field: 'name', direction: 'asc' };
 
 const ITEMS_PER_PAGE = 50;
 const STORAGE_KEY = 'mg-clawset-ownership';
-const ROOM_STORAGE_KEY = 'mg-clawset-room';
+const ROOMS_STORAGE_KEY = 'mg-clawset-rooms';
+const NUM_ROOMS = 4;
 
 let nextInstanceId = 1;
 
-function loadRoom(): PlacedFurniture[] {
+function loadRooms(): PlacedFurniture[][] {
   try {
-    const raw = localStorage.getItem(ROOM_STORAGE_KEY);
+    const raw = localStorage.getItem(ROOMS_STORAGE_KEY);
     if (raw) {
-      const parsed = JSON.parse(raw) as PlacedFurniture[];
-      for (const p of parsed) {
+      const parsed = JSON.parse(raw) as PlacedFurniture[][];
+      if (Array.isArray(parsed)) {
+        for (const room of parsed) {
+          for (const p of room) {
+            const num = parseInt(p.instanceId.split('-').pop() || '0', 10);
+            if (num >= nextInstanceId) nextInstanceId = num + 1;
+          }
+        }
+        // Pad to NUM_ROOMS if saved with fewer
+        while (parsed.length < NUM_ROOMS) parsed.push([]);
+        return parsed;
+      }
+    }
+    // Migrate from old single-room key
+    const oldRaw = localStorage.getItem('mg-clawset-room');
+    if (oldRaw) {
+      const oldParsed = JSON.parse(oldRaw) as PlacedFurniture[];
+      for (const p of oldParsed) {
         const num = parseInt(p.instanceId.split('-').pop() || '0', 10);
         if (num >= nextInstanceId) nextInstanceId = num + 1;
       }
-      return parsed;
+      const rooms: PlacedFurniture[][] = [oldParsed];
+      while (rooms.length < NUM_ROOMS) rooms.push([]);
+      return rooms;
     }
   } catch { /* ignore */ }
-  return [];
+  return Array.from({ length: NUM_ROOMS }, () => []);
 }
 
 function loadOwnership(): Record<string, number> {
@@ -126,9 +146,12 @@ function App() {
   const [ownership, setOwnership] = useState<Record<string, number>>(loadOwnership);
   const [expanded, setExpanded] = useState(false);
   const [page, setPage] = useState(0);
-  const [placed, setPlaced] = useState<PlacedFurniture[]>(loadRoom);
+  const [rooms, setRooms] = useState<PlacedFurniture[][]>(loadRooms);
+  const [activeRoom, setActiveRoom] = useState(0);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [statsPerSpace, setStatsPerSpace] = useState(false);
+
+  const placed = rooms[activeRoom];
 
   // Force collapse room designer on mobile
   useEffect(() => {
@@ -140,24 +163,28 @@ function App() {
   }, [ownership]);
 
   useEffect(() => {
-    localStorage.setItem(ROOM_STORAGE_KEY, JSON.stringify(placed));
-  }, [placed]);
+    localStorage.setItem(ROOMS_STORAGE_KEY, JSON.stringify(rooms));
+  }, [rooms]);
+
+  const updateActiveRoom = useCallback((updater: (prev: PlacedFurniture[]) => PlacedFurniture[]) => {
+    setRooms(prev => prev.map((room, i) => i === activeRoom ? updater(room) : room));
+  }, [activeRoom]);
 
   const handlePlaceFurniture = useCallback((item: FurnitureItem, row: number, col: number) => {
     const instanceId = `placed-${nextInstanceId++}`;
-    setPlaced((prev) => [...prev, { instanceId, item, row, col }]);
-  }, []);
+    updateActiveRoom((prev) => [...prev, { instanceId, item, row, col }]);
+  }, [updateActiveRoom]);
 
   const handleRemoveFurniture = useCallback((instanceId: string) => {
-    setPlaced((prev) => {
+    updateActiveRoom((prev) => {
       const cascadeIds = findAnchoredPieces(instanceId, prev);
       const removeSet = new Set([instanceId, ...cascadeIds]);
       return prev.filter((p) => !removeSet.has(p.instanceId));
     });
-  }, []);
+  }, [updateActiveRoom]);
 
   const handleMoveFurniture = useCallback((instanceId: string, newRow: number, newCol: number) => {
-    setPlaced((prev) => {
+    updateActiveRoom((prev) => {
       const target = prev.find(p => p.instanceId === instanceId);
       if (!target) return prev;
 
@@ -209,7 +236,7 @@ function App() {
 
       return next;
     });
-  }, []);
+  }, [updateActiveRoom]);
 
   const handleSortChange = useCallback((field: SortField) => {
     setSort((prev) => ({
@@ -232,6 +259,23 @@ function App() {
     setOwnership(newOwnership);
   }, []);
 
+  const handleImportRooms = useCallback((allEntries: { id: string; row: number; col: number }[][]) => {
+    const furnitureById = new Map(allFurniture.map(f => [f.id, f]));
+    const newRooms: PlacedFurniture[][] = allEntries.map(entries => {
+      const room: PlacedFurniture[] = [];
+      for (const entry of entries) {
+        const item = furnitureById.get(entry.id);
+        if (!item) continue;
+        const instanceId = `placed-${nextInstanceId++}`;
+        room.push({ instanceId, item, row: entry.row, col: entry.col });
+      }
+      return room;
+    });
+    while (newRooms.length < NUM_ROOMS) newRooms.push([]);
+    setRooms(newRooms);
+    setActiveRoom(0);
+  }, []);
+
   const handleDecrement = useCallback((id: string) => {
     setOwnership((prev) => {
       const current = prev[id] || 0;
@@ -239,6 +283,17 @@ function App() {
       return { ...prev, [id]: current - 1 };
     });
   }, []);
+
+  // Count furniture used across ALL rooms
+  const usedCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const room of rooms) {
+      for (const p of room) {
+        counts[p.item.id] = (counts[p.item.id] || 0) + 1;
+      }
+    }
+    return counts;
+  }, [rooms]);
 
   const filteredAndSorted = useMemo(() => {
     let result = allFurniture.filter((item) => {
@@ -249,6 +304,10 @@ function App() {
       if (item.health < filters.minHealth) return false;
       if (item.mutation < filters.minMutation) return false;
       if (filters.onlyOwned && !(ownership[item.id] > 0)) return false;
+      if (filters.onlyRemaining) {
+        const remaining = (ownership[item.id] || 0) - (usedCounts[item.id] || 0);
+        if (remaining <= 0) return false;
+      }
       // Anchor filter
       if (filters.anchorFilter !== 'any') {
         const hasAnchor = item.shape.some(row => row.some(c => c === 4));
@@ -305,6 +364,11 @@ function App() {
       if (sort.field === 'owned') {
         return dir * ((ownership[a.id] || 0) - (ownership[b.id] || 0));
       }
+      if (sort.field === 'remaining') {
+        const remA = (ownership[a.id] || 0) - (usedCounts[a.id] || 0);
+        const remB = (ownership[b.id] || 0) - (usedCounts[b.id] || 0);
+        return dir * (remA - remB);
+      }
       const key = statsPerSpace ? perSpaceKey[sort.field] ?? sort.field : sort.field;
       const diff = (a[key] as number) - (b[key] as number);
       if (diff !== 0) return dir * diff;
@@ -312,7 +376,7 @@ function App() {
     });
 
     return result;
-  }, [filters, sort, ownership, statsPerSpace]);
+  }, [filters, sort, ownership, statsPerSpace, usedCounts]);
 
   const totalPages = Math.max(1, Math.ceil(filteredAndSorted.length / ITEMS_PER_PAGE));
   const clampedPage = Math.min(page, totalPages - 1);
@@ -330,7 +394,7 @@ function App() {
         <div
           style={{
             ...layoutStyles.browserWrapper,
-            width: isMobile ? '100%' : expanded ? '38%' : 'calc(100% - 24px)',
+            width: isMobile ? '100%' : expanded ? '45%' : 'calc(100% - 24px)',
             ...(isMobile ? { height: 'auto', overflow: 'visible', transition: 'none', position: 'static' as const } : {}),
           }}
         >
@@ -353,15 +417,21 @@ function App() {
             isMobile={isMobile}
             statsPerSpace={statsPerSpace}
             onStatsPerSpaceChange={setStatsPerSpace}
+            usedCounts={usedCounts}
           />
         </div>
         {!isMobile && (
           <RoomDesignerWorkspace
             visible={expanded}
             placed={placed}
+            rooms={rooms}
+            activeRoom={activeRoom}
+            onActiveRoomChange={setActiveRoom}
             onPlace={handlePlaceFurniture}
             onRemove={handleRemoveFurniture}
             onMove={handleMoveFurniture}
+            onImportRooms={handleImportRooms}
+            ownership={ownership}
           />
         )}
       </SplitScreenContainer>
