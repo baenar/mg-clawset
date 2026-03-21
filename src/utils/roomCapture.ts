@@ -142,6 +142,12 @@ function drawGrid(
     ctx.stroke();
   }
 
+  // Clip to grid bounds so furniture doesn't overflow
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(x, y, w, h, 8);
+  ctx.clip();
+
   // Furniture images
   for (const p of placed) {
     const { minR, maxR, minC, maxC } = getVisualBounds(p.item.shape);
@@ -188,6 +194,8 @@ function drawGrid(
 
     ctx.drawImage(img, drawX, drawY, drawW, drawH);
   }
+
+  ctx.restore();
 
   // Border
   ctx.strokeStyle = CELL_BORDER;
