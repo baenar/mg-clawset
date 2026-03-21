@@ -99,7 +99,7 @@ const statusText: CSSProperties = {
   minHeight: 18,
 };
 
-function parseFurnitureBlob(uint8Array: Uint8Array): { furniture_name: string } {
+function parseFurnitureBlob(uint8Array: Uint8Array): { furniture_name: string; quality: number } {
   const view = new DataView(uint8Array.buffer, uint8Array.byteOffset, uint8Array.byteLength);
   const decoder = new TextDecoder('utf-8');
   let off = 0;
@@ -109,7 +109,10 @@ function parseFurnitureBlob(uint8Array: Uint8Array): { furniture_name: string } 
   off += 4; // padding
   const nameBytes = uint8Array.slice(off, off + name_len);
   const furniture_name = decoder.decode(nameBytes);
-  return { furniture_name };
+  off += name_len;
+  // Quality/rarity field sits right after the name string (0 = normal, 2 = rare)
+  const quality = view.getInt32(off, true);
+  return { furniture_name, quality };
 }
 
 interface Props {
@@ -147,21 +150,28 @@ export default function SaveImportModal({ open, onClose, onImport, furnitureIdMa
 
       setStatus('Parsing furniture data...');
       const stmt = db.prepare('SELECT key, data FROM furniture');
-      const nameCounts: Record<string, number> = {};
+      const itemCounts: { name: string; quality: number }[] = [];
 
       while (stmt.step()) {
         const row = stmt.getAsObject();
         const blobData = row.data as Uint8Array;
         try {
           const parsed = parseFurnitureBlob(blobData);
-          const name = parsed.furniture_name;
-          nameCounts[name] = (nameCounts[name] || 0) + 1;
+          itemCounts.push({ name: parsed.furniture_name, quality: parsed.quality });
         } catch {
           // skip unparseable rows
         }
       }
       stmt.free();
       db.close();
+
+      // Aggregate counts per resolved name (base name or rare variant)
+      const nameCounts: Record<string, number> = {};
+      for (const { name, quality } of itemCounts) {
+        // quality 0 = normal, 2 = rare
+        const resolvedName = quality >= 2 ? `${name}_(Rare)` : name;
+        nameCounts[resolvedName] = (nameCounts[resolvedName] || 0) + 1;
+      }
 
       // Map save file names to app IDs
       const newOwnership: Record<string, number> = {};
@@ -178,7 +188,8 @@ export default function SaveImportModal({ open, onClose, onImport, furnitureIdMa
         }
       }
 
-      console.log('[SaveImport] Parsed names from save:', Object.keys(nameCounts));
+      console.log('[SaveImport] Parsed items from save:', itemCounts.length, '| Unique names:', Object.keys(nameCounts).length);
+      console.log('[SaveImport] Rare items found:', itemCounts.filter(i => i.quality > 1).length);
       console.log('[SaveImport] Sample map keys:', [...furnitureIdMap.keys()].slice(0, 10));
       console.log('[SaveImport] Matched:', matched, 'Unmatched:', unmatchedNames);
       console.log('[SaveImport] New ownership:', newOwnership);
