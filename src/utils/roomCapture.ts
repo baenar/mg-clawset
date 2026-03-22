@@ -1,5 +1,5 @@
 import type { PlacedFurniture, StatKey } from '../types/furniture';
-import { ROOM_COLS, ROOM_ROWS } from '../types/furniture';
+import { ROOM_COLS, ROOM_ROWS, ATTIC_COLS, ATTIC_ROWS, ATTIC_INDEX, isAtticCellValid, getRoomLabel } from '../types/furniture';
 
 const STATS: StatKey[] = ['appeal', 'comfort', 'stimulation', 'health', 'mutation'];
 
@@ -83,7 +83,7 @@ function drawStatsBar(
   for (const s of STATS) {
     const icon = statIcons[s];
     if (icon) {
-      // Draw icon as white: draw to temp canvas, fill white using composite
+      // Draw icon as white
       const tmp = document.createElement('canvas');
       tmp.width = iconSize;
       tmp.height = iconSize;
@@ -116,9 +116,11 @@ function drawGrid(
   placed: PlacedFurniture[],
   x: number, y: number, w: number, h: number,
   loadedImages: Map<string, HTMLImageElement>,
+  gridCols: number = ROOM_COLS,
+  gridRows: number = ROOM_ROWS,
 ) {
-  const cellW = w / ROOM_COLS;
-  const cellH = h / ROOM_ROWS;
+  const cellW = w / gridCols;
+  const cellH = h / gridRows;
 
   // Grid background
   ctx.fillStyle = CELL_BG;
@@ -129,13 +131,13 @@ function drawGrid(
   // Grid lines
   ctx.strokeStyle = CELL_BORDER;
   ctx.lineWidth = 1;
-  for (let r = 0; r <= ROOM_ROWS; r++) {
+  for (let r = 0; r <= gridRows; r++) {
     ctx.beginPath();
     ctx.moveTo(x, y + r * cellH);
     ctx.lineTo(x + w, y + r * cellH);
     ctx.stroke();
   }
-  for (let c = 0; c <= ROOM_COLS; c++) {
+  for (let c = 0; c <= gridCols; c++) {
     ctx.beginPath();
     ctx.moveTo(x + c * cellW, y);
     ctx.lineTo(x + c * cellW, y + h);
@@ -148,7 +150,98 @@ function drawGrid(
   ctx.roundRect(x, y, w, h, 8);
   ctx.clip();
 
-  // Furniture images
+  drawFurniture(ctx, placed, x, y, cellW, cellH, loadedImages);
+
+  ctx.restore();
+
+  // Border
+  ctx.strokeStyle = CELL_BORDER;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(x, y, w, h, 8);
+  ctx.stroke();
+}
+
+/** Build the attic outline path — diagonals pass through outer cell corners */
+function atticClipPath(ctx: CanvasRenderingContext2D, x: number, y: number, cellW: number, cellH: number) {
+  // The diagonals go from the top row corners to the last row's top corners,
+  // so they pass through each row's outer staircase corner exactly.
+  // Row 0: cols 14–16, Row 7: cols 0–30
+  // Left diagonal: (14*cellW, 0) → (0, 7*cellH) — passes through (12*cellW, cellH), (10*cellW, 2*cellH), etc.
+  // Right diagonal: (17*cellW, 0) → (31*cellW, 7*cellH)
+  // Then the bottom edge at row 8 encloses the last row.
+  const topLeftX = x + 14 * cellW;
+  const topRightX = x + 17 * cellW;
+  const diagBottomY = y + 7 * cellH; // top of last row — diagonal ends here
+  const gridBottomY = y + ATTIC_ROWS * cellH; // actual bottom of grid
+
+  ctx.beginPath();
+  ctx.moveTo(topLeftX, y);                          // top-left
+  ctx.lineTo(topRightX, y);                         // top-right
+  ctx.lineTo(x + ATTIC_COLS * cellW, diagBottomY);  // right diagonal end
+  ctx.lineTo(x + ATTIC_COLS * cellW, gridBottomY);  // right side down
+  ctx.lineTo(x, gridBottomY);                       // bottom-left
+  ctx.lineTo(x, diagBottomY);                       // left side up
+  ctx.closePath();                                   // back to top-left via left diagonal
+}
+
+function drawAtticGrid(
+  ctx: CanvasRenderingContext2D,
+  placed: PlacedFurniture[],
+  x: number, y: number, w: number, h: number,
+  loadedImages: Map<string, HTMLImageElement>,
+) {
+  const cellW = w / ATTIC_COLS;
+  const cellH = h / ATTIC_ROWS;
+
+  // Draw cell backgrounds only for valid cells
+  for (let r = 0; r < ATTIC_ROWS; r++) {
+    for (let c = 0; c < ATTIC_COLS; c++) {
+      if (!isAtticCellValid(r, c)) continue;
+      ctx.fillStyle = CELL_BG;
+      ctx.fillRect(x + c * cellW, y + r * cellH, cellW, cellH);
+    }
+  }
+
+  // Draw grid lines within the attic shape
+  ctx.save();
+  atticClipPath(ctx, x, y, cellW, cellH);
+  ctx.clip();
+
+  ctx.strokeStyle = CELL_BORDER;
+  ctx.lineWidth = 0.5;
+  for (let r = 0; r <= ATTIC_ROWS; r++) {
+    ctx.beginPath();
+    ctx.moveTo(x, y + r * cellH);
+    ctx.lineTo(x + w, y + r * cellH);
+    ctx.stroke();
+  }
+  for (let c = 0; c <= ATTIC_COLS; c++) {
+    ctx.beginPath();
+    ctx.moveTo(x + c * cellW, y);
+    ctx.lineTo(x + c * cellW, y + ATTIC_ROWS * cellH);
+    ctx.stroke();
+  }
+
+  // Draw furniture (clipped to attic shape)
+  drawFurniture(ctx, placed, x, y, cellW, cellH, loadedImages);
+
+  ctx.restore();
+
+  // Draw the attic outline border
+  ctx.strokeStyle = CELL_BORDER;
+  ctx.lineWidth = 2;
+  atticClipPath(ctx, x, y, cellW, cellH);
+  ctx.stroke();
+}
+
+function drawFurniture(
+  ctx: CanvasRenderingContext2D,
+  placed: PlacedFurniture[],
+  x: number, y: number,
+  cellW: number, cellH: number,
+  loadedImages: Map<string, HTMLImageElement>,
+) {
   for (const p of placed) {
     const { minR, maxR, minC, maxC } = getVisualBounds(p.item.shape);
     const vRows = maxR - minR + 1;
@@ -174,13 +267,11 @@ function drawGrid(
     let drawW: number, drawH: number, drawX: number, drawY: number;
 
     if (align === 'top' || align === 'bottom') {
-      // Fill height
       drawH = imgH;
       drawW = drawH * imgAspect;
       drawX = imgX + (imgW - drawW) / 2;
       drawY = align === 'bottom' ? imgY + imgH - drawH : imgY;
     } else {
-      // Contain
       if (imgAspect > cellAspect) {
         drawW = imgW;
         drawH = drawW / imgAspect;
@@ -194,15 +285,6 @@ function drawGrid(
 
     ctx.drawImage(img, drawX, drawY, drawW, drawH);
   }
-
-  ctx.restore();
-
-  // Border
-  ctx.strokeStyle = CELL_BORDER;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.roundRect(x, y, w, h, 8);
-  ctx.stroke();
 }
 
 const WATERMARK_BAR_H = 36;
@@ -299,9 +381,13 @@ export async function captureRoom(
   const room = rooms[roomIndex];
   const stats = computeStats(room);
   const { images, statIcons, favicon } = await loadAllImages([room]);
+  const label = getRoomLabel(roomIndex);
+  const isAttic = roomIndex === ATTIC_INDEX;
 
   const gridW = 800;
-  const gridH = gridW * (ROOM_ROWS / ROOM_COLS);
+  const roomCols = isAttic ? ATTIC_COLS : ROOM_COLS;
+  const roomRows = isAttic ? ATTIC_ROWS : ROOM_ROWS;
+  const gridH = gridW * (roomRows / roomCols);
   const statsBarH = 32;
   const pad = 16;
   const canvasW = gridW + pad * 2;
@@ -317,15 +403,19 @@ export async function captureRoom(
   ctx.fillRect(0, 0, canvasW, canvasH);
 
   // Stats bar
-  drawStatsBar(ctx, stats, `Room ${roomIndex + 1}`, pad, pad, gridW, statsBarH, statIcons, room.length);
+  drawStatsBar(ctx, stats, label, pad, pad, gridW, statsBarH, statIcons, room.length);
 
   // Grid
-  drawGrid(ctx, room, pad, pad + statsBarH + pad / 2, gridW, gridH, images);
+  if (isAttic) {
+    drawAtticGrid(ctx, room, pad, pad + statsBarH + pad / 2, gridW, gridH, images);
+  } else {
+    drawGrid(ctx, room, pad, pad + statsBarH + pad / 2, gridW, gridH, images);
+  }
 
   // Watermark
   await drawWatermark(ctx, canvasW, canvasH, favicon);
 
-  downloadCanvas(canvas, `room-${roomIndex + 1}.png`);
+  downloadCanvas(canvas, `${label.toLowerCase().replace(' ', '-')}.png`);
 }
 
 export async function captureHouse(rooms: PlacedFurniture[][]) {
@@ -338,14 +428,19 @@ export async function captureHouse(rooms: PlacedFurniture[][]) {
   const pad = 16;
   const gap = 12;
 
-  // Layout: 2 columns x 2 rows
-  // Row order: Room 4 Room 3 (top), Room 1 Room 2 (bottom)
-  const roomOrder = [3, 2, 0, 1]; // Room 4, Room 3, Room 1, Room 2
-  const roomLabels = ['Room 4', 'Room 3', 'Room 1', 'Room 2'];
+  // Attic dimensions - spans full width of the 2-column layout
+  const atticTotalW = gridW * 2 + gap;
+  const atticH = atticTotalW * (ATTIC_ROWS / ATTIC_COLS);
+  const atticStatsBarH = 28;
 
-  const canvasW = pad + gridW + gap + gridW + pad;
-  const roomBlockH = statsBarH + 4 + gridH; // stats + gap + grid
-  const canvasH = pad + houseSummaryH + gap + roomBlockH + gap + roomBlockH + pad + WATERMARK_BAR_H;
+  // Layout: 2 columns x 2 rows for regular rooms
+  // Room order: Room 4 Room 3 (top), Room 1 Room 2 (bottom)
+  const roomOrder = [3, 2, 0, 1]; // Room 4, Room 3, Room 1, Room 2
+
+  const canvasW = pad + atticTotalW + pad;
+  const roomBlockH = statsBarH + 4 + gridH;
+  const atticBlockH = atticStatsBarH + 4 + atticH;
+  const canvasH = pad + houseSummaryH + gap + atticBlockH + gap + roomBlockH + gap + roomBlockH + pad + WATERMARK_BAR_H;
 
   const canvas = document.createElement('canvas');
   canvas.width = canvasW;
@@ -366,19 +461,28 @@ export async function captureHouse(rooms: PlacedFurniture[][]) {
   }
   drawStatsBar(ctx, houseStats, 'House', pad, pad, canvasW - pad * 2, houseSummaryH, statIcons, totalItems);
 
-  // Draw 4 rooms in 2x2 grid
+  // Draw attic
+  let curY = pad + houseSummaryH + gap;
+  const atticRoom = rooms[ATTIC_INDEX] || [];
+  const atticStats = computeStats(atticRoom);
+  drawStatsBar(ctx, atticStats, 'Attic', pad, curY, atticTotalW, atticStatsBarH, statIcons, atticRoom.length);
+  drawAtticGrid(ctx, atticRoom, pad, curY + atticStatsBarH + 4, atticTotalW, atticH, images);
+  curY += atticBlockH + gap;
+
+  // Draw 4 regular rooms in 2x2 grid
   for (let i = 0; i < 4; i++) {
     const col = i % 2;
     const row = Math.floor(i / 2);
     const ri = roomOrder[i];
     const room = rooms[ri] || [];
     const stats = computeStats(room);
+    const roomLabel = getRoomLabel(ri);
 
-    const x = pad + col * (gridW + gap);
-    const y = pad + houseSummaryH + gap + row * (roomBlockH + gap);
+    const rx = pad + col * (gridW + gap);
+    const ry = curY + row * (roomBlockH + gap);
 
-    drawStatsBar(ctx, stats, roomLabels[i], x, y, gridW, statsBarH, statIcons, room.length);
-    drawGrid(ctx, room, x, y + statsBarH + 4, gridW, gridH, images);
+    drawStatsBar(ctx, stats, roomLabel, rx, ry, gridW, statsBarH, statIcons, room.length);
+    drawGrid(ctx, room, rx, ry + statsBarH + 4, gridW, gridH, images);
   }
 
   // Watermark

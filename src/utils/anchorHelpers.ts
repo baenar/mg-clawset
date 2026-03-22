@@ -1,4 +1,4 @@
-import type { FurnitureItem, PlacedFurniture } from '../types/furniture';
+import type { FurnitureItem, PlacedFurniture, RoomConfig } from '../types/furniture';
 import { ROOM_COLS, ROOM_ROWS } from '../types/furniture';
 
 export function getAnchorPointCells(p: PlacedFurniture): Set<string> {
@@ -55,7 +55,10 @@ export function findAllAnchored(targetId: string, placed: PlacedFurniture[]): st
 /**
  * Find all pieces that lose anchor support when targetId is removed (cascade removal).
  */
-export function findAnchoredPieces(targetId: string, placed: PlacedFurniture[]): Set<string> {
+export function findAnchoredPieces(targetId: string, placed: PlacedFurniture[], config?: RoomConfig): Set<string> {
+  const rows = config?.rows ?? ROOM_ROWS;
+  const hasTopAnchors = config?.hasTopAnchors ?? true;
+
   const toRemove = new Set<string>([targetId]);
   let changed = true;
   while (changed) {
@@ -74,7 +77,9 @@ export function findAnchoredPieces(targetId: string, placed: PlacedFurniture[]):
           const [rowStr] = a.split(',');
           const ar = parseInt(rowStr);
           let hasOtherSupport = false;
-          if (ar === ROOM_ROWS || ar === -1) {
+          if (ar === rows) {
+            hasOtherSupport = true;
+          } else if (ar === -1 && hasTopAnchors) {
             hasOtherSupport = true;
           } else {
             for (const other of placed) {
@@ -99,14 +104,19 @@ export function findAnchoredPieces(targetId: string, placed: PlacedFurniture[]):
   return toRemove;
 }
 
-export function wouldCollide(item: FurnitureItem, row: number, col: number, occupancy: Set<string>): boolean {
+export function wouldCollide(item: FurnitureItem, row: number, col: number, occupancy: Set<string>, config?: RoomConfig): boolean {
+  const rows = config?.rows ?? ROOM_ROWS;
+  const cols = config?.cols ?? ROOM_COLS;
+  const isValidCell = config?.isValidCell;
+
   for (let r = 0; r < item.shape.length; r++) {
     for (let c = 0; c < item.shape[r].length; c++) {
       const t = item.shape[r][c];
       if (t === 2 || t === 3) {
         const gr = row + r;
         const gc = col + c;
-        if (gr < 0 || gr >= ROOM_ROWS || gc < 0 || gc >= ROOM_COLS) return true;
+        if (gr < 0 || gr >= rows || gc < 0 || gc >= cols) return true;
+        if (isValidCell && !isValidCell(gr, gc)) return true;
         if (occupancy.has(`${gr},${gc}`)) return true;
       }
     }
@@ -122,7 +132,12 @@ export function canPlaceGroup(
   pieces: { item: FurnitureItem; row: number; col: number }[],
   occupancy: (string | null)[][],
   anchorPointSet: Set<string>,
+  config?: RoomConfig,
 ): boolean {
+  const rows = config?.rows ?? ROOM_ROWS;
+  const cols = config?.cols ?? ROOM_COLS;
+  const isValidCell = config?.isValidCell;
+
   // Build internal anchor points from the group itself
   const groupAPs = new Set(anchorPointSet);
   for (const p of pieces) {
@@ -143,15 +158,17 @@ export function canPlaceGroup(
         const gr = p.row + r;
         const gc = p.col + c;
         if (cellType === 2 || cellType === 3) {
-          if (gr < 0 || gr >= ROOM_ROWS || gc < 0 || gc >= ROOM_COLS) return false;
+          if (gr < 0 || gr >= rows || gc < 0 || gc >= cols) return false;
+          if (isValidCell && !isValidCell(gr, gc)) return false;
           if (occupancy[gr][gc] !== null) return false;
         }
         if (cellType === 4) {
-          if (gc < 0 || gc >= ROOM_COLS) return false;
+          if (gc < 0 || gc >= cols) return false;
           if (!groupAPs.has(`${gr},${gc}`)) return false;
         }
         if (cellType === 5) {
-          if (gr < 0 || gr >= ROOM_ROWS || gc < 0 || gc >= ROOM_COLS) return false;
+          if (gr < 0 || gr >= rows || gc < 0 || gc >= cols) return false;
+          if (isValidCell && !isValidCell(gr, gc)) return false;
         }
       }
     }

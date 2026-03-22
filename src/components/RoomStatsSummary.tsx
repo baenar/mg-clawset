@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import type { PlacedFurniture, StatKey } from '../types/furniture';
+import { getRoomLabel } from '../types/furniture';
 import StatIcon from './StatIcon';
 
 const STATS: { key: StatKey; label: string }[] = [
@@ -155,7 +156,7 @@ export default function RoomStatsSummary({ rooms, activeRoom, onActiveRoomChange
         return (
           <StatRow
             key={i}
-            label={`Room ${i + 1}`}
+            label={getRoomLabel(i)}
             totals={totals}
             count={`${room.length} item${room.length !== 1 ? 's' : ''}`}
             active={i === activeRoom}

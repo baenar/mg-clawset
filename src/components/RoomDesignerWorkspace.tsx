@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import type { FurnitureItem, PlacedFurniture } from '../types/furniture';
 import RoomGrid from './RoomGrid';
 import RoomStatsSummary from './RoomStatsSummary';
+import { getRoomLabel } from '../types/furniture';
 import { captureRoom, captureHouse } from '../utils/roomCapture';
 
 const LEGEND: { type: number; color: string; border: string; label: string }[] = [
@@ -168,6 +169,7 @@ export default function RoomDesignerWorkspace({
           onRemove={onRemove}
           onMove={onMove}
           expertView={expertView}
+          roomIndex={activeRoom}
         />
       </div>
       {expertView && (
@@ -196,8 +198,8 @@ export default function RoomDesignerWorkspace({
         flexWrap: 'wrap',
       }}>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          <button style={smallBtn} onClick={() => captureRoom(rooms, activeRoom)} title="Save image of current room">
-            Save image of a room
+          <button style={smallBtn} onClick={() => captureRoom(rooms, activeRoom)} title={`Save image of ${getRoomLabel(activeRoom)}`}>
+            Save image of {getRoomLabel(activeRoom)}
           </button>
           <button style={smallBtn} onClick={() => captureHouse(rooms)} title="Save image of all rooms">
             Save image of a house

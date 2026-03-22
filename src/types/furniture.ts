@@ -53,3 +53,43 @@ export interface PlacedFurniture {
 
 export const ROOM_COLS = 16;
 export const ROOM_ROWS = 7;
+
+export const ATTIC_COLS = 31;
+export const ATTIC_ROWS = 8;
+export const ATTIC_INDEX = 4;
+
+export function isAtticCellValid(row: number, col: number): boolean {
+  if (row < 0 || row >= ATTIC_ROWS || col < 0 || col >= ATTIC_COLS) return false;
+  const width = 3 + row * 4;
+  const startCol = 14 - row * 2;
+  return col >= startCol && col < startCol + width;
+}
+
+export interface RoomConfig {
+  cols: number;
+  rows: number;
+  isValidCell: (row: number, col: number) => boolean;
+  hasTopAnchors: boolean;
+}
+
+const REGULAR_CONFIG: RoomConfig = {
+  cols: ROOM_COLS,
+  rows: ROOM_ROWS,
+  isValidCell: (r, c) => r >= 0 && r < ROOM_ROWS && c >= 0 && c < ROOM_COLS,
+  hasTopAnchors: true,
+};
+
+const ATTIC_CONFIG: RoomConfig = {
+  cols: ATTIC_COLS,
+  rows: ATTIC_ROWS,
+  isValidCell: isAtticCellValid,
+  hasTopAnchors: false,
+};
+
+export function getRoomConfig(roomIndex: number): RoomConfig {
+  return roomIndex === ATTIC_INDEX ? ATTIC_CONFIG : REGULAR_CONFIG;
+}
+
+export function getRoomLabel(roomIndex: number): string {
+  return roomIndex === ATTIC_INDEX ? 'Attic' : `Room ${roomIndex + 1}`;
+}

@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { CSSProperties, DragEvent } from 'react';
-import type { FurnitureItem, PlacedFurniture } from '../types/furniture';
-import { ROOM_COLS, ROOM_ROWS } from '../types/furniture';
+import type { FurnitureItem, PlacedFurniture, RoomConfig } from '../types/furniture';
+import { getRoomConfig } from '../types/furniture';
 import { findAllAnchored, canPlaceGroup } from '../utils/anchorHelpers';
 
 const CELL_COLORS: Record<number, string> = {
@@ -25,12 +25,12 @@ interface Props {
   onRemove: (instanceId: string) => void;
   onMove: (instanceId: string, row: number, col: number) => void;
   expertView: boolean;
+  roomIndex?: number;
 }
 
-/** Build a 2D occupancy grid, optionally ignoring certain instanceIds (for move validation). */
-function buildOccupancy(placed: PlacedFurniture[], ignoreId?: string, ignoreIds?: Set<string>): (string | null)[][] {
-  const grid: (string | null)[][] = Array.from({ length: ROOM_ROWS }, () =>
-    Array(ROOM_COLS).fill(null),
+function buildOccupancy(placed: PlacedFurniture[], cfg: RoomConfig, ignoreId?: string, ignoreIds?: Set<string>): (string | null)[][] {
+  const grid: (string | null)[][] = Array.from({ length: cfg.rows }, () =>
+    Array(cfg.cols).fill(null),
   );
   for (const p of placed) {
     if (p.instanceId === ignoreId) continue;
@@ -42,7 +42,7 @@ function buildOccupancy(placed: PlacedFurniture[], ignoreId?: string, ignoreIds?
         if (cellType === 2 || cellType === 3) {
           const gr = p.row + r;
           const gc = p.col + c;
-          if (gr >= 0 && gr < ROOM_ROWS && gc >= 0 && gc < ROOM_COLS) {
+          if (gr >= 0 && gr < cfg.rows && gc >= 0 && gc < cfg.cols) {
             grid[gr][gc] = p.instanceId;
           }
         }
@@ -52,15 +52,19 @@ function buildOccupancy(placed: PlacedFurniture[], ignoreId?: string, ignoreIds?
   return grid;
 }
 
-function buildAnchorPointSet(placed: PlacedFurniture[], ignoreId?: string, ignoreIds?: Set<string>): Set<string> {
+function buildAnchorPointSet(placed: PlacedFurniture[], cfg: RoomConfig, ignoreId?: string, ignoreIds?: Set<string>): Set<string> {
   const set = new Set<string>();
 
-  for (let c = 0; c < ROOM_COLS; c++) {
-    set.add(`${ROOM_ROWS},${c}`);
+  // Bottom boundary anchors
+  for (let c = 0; c < cfg.cols; c++) {
+    set.add(`${cfg.rows},${c}`);
   }
 
-  for (let c = 0; c < ROOM_COLS; c++) {
-    set.add(`${-1},${c}`);
+  // Top boundary anchors (only for rooms that have them)
+  if (cfg.hasTopAnchors) {
+    for (let c = 0; c < cfg.cols; c++) {
+      set.add(`${-1},${c}`);
+    }
   }
 
   for (const p of placed) {
@@ -84,6 +88,7 @@ function canPlace(
   col: number,
   occupancy: (string | null)[][],
   anchorPointSet: Set<string>,
+  cfg: RoomConfig,
 ): boolean {
   const shape = item.shape;
   for (let r = 0; r < shape.length; r++) {
@@ -92,24 +97,26 @@ function canPlace(
       const gr = row + r;
       const gc = col + c;
       if (cellType === 2 || cellType === 3) {
-        if (gr < 0 || gr >= ROOM_ROWS || gc < 0 || gc >= ROOM_COLS) return false;
+        if (gr < 0 || gr >= cfg.rows || gc < 0 || gc >= cfg.cols) return false;
+        if (!cfg.isValidCell(gr, gc)) return false;
         if (occupancy[gr][gc] !== null) return false;
       }
       if (cellType === 4) {
-        if (gc < 0 || gc >= ROOM_COLS) return false;
+        if (gc < 0 || gc >= cfg.cols) return false;
         if (!anchorPointSet.has(`${gr},${gc}`)) return false;
       }
       if (cellType === 5) {
-        if (gr < 0 || gr >= ROOM_ROWS || gc < 0 || gc >= ROOM_COLS) return false;
+        if (gr < 0 || gr >= cfg.rows || gc < 0 || gc >= cfg.cols) return false;
+        if (!cfg.isValidCell(gr, gc)) return false;
       }
     }
   }
   return true;
 }
 
-function buildShapeTypeGrid(placed: PlacedFurniture[]): (number | null)[][] {
-  const grid: (number | null)[][] = Array.from({ length: ROOM_ROWS }, () =>
-    Array(ROOM_COLS).fill(null),
+function buildShapeTypeGrid(placed: PlacedFurniture[], cfg: RoomConfig): (number | null)[][] {
+  const grid: (number | null)[][] = Array.from({ length: cfg.rows }, () =>
+    Array(cfg.cols).fill(null),
   );
   for (const p of placed) {
     const shape = p.item.shape;
@@ -119,7 +126,7 @@ function buildShapeTypeGrid(placed: PlacedFurniture[]): (number | null)[][] {
         if (cellType !== 1 && cellType !== 4) {
           const gr = p.row + r;
           const gc = p.col + c;
-          if (gr >= 0 && gr < ROOM_ROWS && gc >= 0 && gc < ROOM_COLS) {
+          if (gr >= 0 && gr < cfg.rows && gc >= 0 && gc < cfg.cols) {
             grid[gr][gc] = cellType;
           }
         }
@@ -154,32 +161,20 @@ function getVisualBounds(shape: number[][]): { minR: number; maxR: number; minC:
   return { minR, maxR, minC, maxC };
 }
 
-/**
- * Determine vertical alignment for the furniture image.
- * - If the topmost visual row contains an anchor point (3), push image to top
- *   so it visually touches the top grid line.
- * - If there are anchor cells (4) below the visual bounds, push image to bottom
- *   so it sits on top of the anchor attachment.
- * - Otherwise center.
- */
 function getImageAlignment(shape: number[][]): 'top' | 'bottom' | 'center' {
   const vis = getVisualBounds(shape);
 
-  // Check if top visual row has anchor points (type 3)
   let topHasAnchorPoint = false;
   if (vis.minR >= 0 && vis.minR < shape.length) {
     topHasAnchorPoint = shape[vis.minR].some(c => c === 3);
   }
 
-  // Check if there are anchor cells (type 4) below visual bounds
   let hasAnchorBelow = false;
   for (let r = vis.maxR + 1; r < shape.length; r++) {
     if (shape[r].some(c => c === 4)) { hasAnchorBelow = true; break; }
   }
 
-  // Bottom anchor takes priority (image rests on shelf)
   if (hasAnchorBelow) return 'bottom';
-  // Then top anchor point (image should touch the ceiling/top grid)
   if (topHasAnchorPoint) return 'top';
   return 'center';
 }
@@ -188,31 +183,33 @@ type DragPayload =
   | { type: 'new'; item: FurnitureItem }
   | { type: 'move'; instanceId: string; item: FurnitureItem };
 
-/** For a move drag, compute the group of shapes to highlight (target + all anchored pieces). */
 interface HoverInfo {
   shapes: { row: number; col: number; shape: number[][] }[];
   valid: boolean;
 }
 
-export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView }: Props) {
+export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView, roomIndex = 0 }: Props) {
+  const cfg = getRoomConfig(roomIndex);
+  const { cols, rows } = cfg;
+
   const gridRef = useRef<HTMLDivElement>(null);
   const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);
   const dragPayloadRef = useRef<DragPayload | null>(null);
 
-  const occupancy = buildOccupancy(placed);
-  const anchorPoints = buildAnchorPointSet(placed);
-  const shapeTypeGrid = expertView ? buildShapeTypeGrid(placed) : null;
+  const occupancy = buildOccupancy(placed, cfg);
+  const anchorPoints = buildAnchorPointSet(placed, cfg);
+  const shapeTypeGrid = expertView ? buildShapeTypeGrid(placed, cfg) : null;
 
   const getCellFromEvent = useCallback((e: DragEvent): { row: number; col: number } | null => {
     if (!gridRef.current) return null;
     const rect = gridRef.current.getBoundingClientRect();
-    const cellW = rect.width / ROOM_COLS;
-    const cellH = rect.height / ROOM_ROWS;
+    const cellW = rect.width / cols;
+    const cellH = rect.height / rows;
     const col = Math.floor((e.clientX - rect.left) / cellW);
     const row = Math.floor((e.clientY - rect.top) / cellH);
-    if (row < 0 || row >= ROOM_ROWS || col < 0 || col >= ROOM_COLS) return null;
+    if (row < 0 || row >= rows || col < 0 || col >= cols) return null;
     return { row, col };
-  }, []);
+  }, [cols, rows]);
 
   const handleDragOver = useCallback((e: DragEvent) => {
     e.preventDefault();
@@ -225,7 +222,6 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
     }
 
     if (payload.type === 'move') {
-      // Find the target piece and all anchored pieces
       const target = placed.find(p => p.instanceId === payload.instanceId);
       if (!target) { setHoverInfo(null); return; }
       const anchoredIds = findAllAnchored(payload.instanceId, placed);
@@ -234,24 +230,21 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
       const dRow = cell.row - target.row;
       const dCol = cell.col - target.col;
 
-      // Build moved group positions
       const movedGroup = placed
         .filter(p => groupIds.has(p.instanceId))
         .map(p => ({ item: p.item, row: p.row + dRow, col: p.col + dCol }));
 
-      // Build occupancy/anchor points excluding the entire group
-      const occ = buildOccupancy(placed, undefined, groupIds);
-      const ap = buildAnchorPointSet(placed, undefined, groupIds);
-      const valid = canPlaceGroup(movedGroup, occ, ap);
+      const occ = buildOccupancy(placed, cfg, undefined, groupIds);
+      const ap = buildAnchorPointSet(placed, cfg, undefined, groupIds);
+      const valid = canPlaceGroup(movedGroup, occ, ap, cfg);
 
       const shapes = movedGroup.map(p => ({ row: p.row, col: p.col, shape: p.item.shape }));
       setHoverInfo({ shapes, valid });
     } else {
-      // New item from browser
-      const valid = canPlace(payload.item, cell.row, cell.col, occupancy, anchorPoints);
+      const valid = canPlace(payload.item, cell.row, cell.col, occupancy, anchorPoints, cfg);
       setHoverInfo({ shapes: [{ row: cell.row, col: cell.col, shape: payload.item.shape }], valid });
     }
-  }, [getCellFromEvent, occupancy, anchorPoints, placed]);
+  }, [getCellFromEvent, occupancy, anchorPoints, placed, cfg]);
 
   const handleDragLeave = useCallback((e: DragEvent) => {
     if (!gridRef.current?.contains(e.relatedTarget as Node)) {
@@ -280,10 +273,10 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
         .filter(p => groupIds.has(p.instanceId))
         .map(p => ({ item: p.item, row: p.row + dRow, col: p.col + dCol }));
 
-      const occ = buildOccupancy(placed, undefined, groupIds);
-      const ap = buildAnchorPointSet(placed, undefined, groupIds);
+      const occ = buildOccupancy(placed, cfg, undefined, groupIds);
+      const ap = buildAnchorPointSet(placed, cfg, undefined, groupIds);
 
-      if (canPlaceGroup(movedGroup, occ, ap)) {
+      if (canPlaceGroup(movedGroup, occ, ap, cfg)) {
         onMove(payload.instanceId, cell.row, cell.col);
       }
       dragPayloadRef.current = null;
@@ -294,12 +287,12 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
       const data = e.dataTransfer.getData('application/json');
       if (!data) return;
       const item: FurnitureItem = JSON.parse(data);
-      if (canPlace(item, cell.row, cell.col, occupancy, anchorPoints)) {
+      if (canPlace(item, cell.row, cell.col, occupancy, anchorPoints, cfg)) {
         onPlace(item, cell.row, cell.col);
       }
     } catch { /* ignore */ }
     dragPayloadRef.current = null;
-  }, [getCellFromEvent, occupancy, anchorPoints, placed, onPlace, onMove]);
+  }, [getCellFromEvent, occupancy, anchorPoints, placed, onPlace, onMove, cfg]);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -316,7 +309,6 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
       for (let r = 0; r < s.shape.length; r++) {
         for (let c = 0; c < s.shape[r].length; c++) {
           const t = s.shape[r][c];
-          // Skip empty (1) and anchor (4) cells — don't highlight anchors
           if (t !== 1 && t !== 4) {
             hoverSet.add(`${s.row + r}-${s.col + c}`);
           }
@@ -341,19 +333,17 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
 
   const gridStyle: CSSProperties = {
     display: 'grid',
-    gridTemplateColumns: `repeat(${ROOM_COLS}, 1fr)`,
-    gridTemplateRows: `repeat(${ROOM_ROWS}, 1fr)`,
+    gridTemplateColumns: `repeat(${cols}, 1fr)`,
+    gridTemplateRows: `repeat(${rows}, 1fr)`,
     width: '100%',
-    aspectRatio: `${ROOM_COLS} / ${ROOM_ROWS}`,
-    background: 'var(--code-bg)',
+    aspectRatio: `${cols} / ${rows}`,
+    background: 'transparent',
     borderRadius: 8,
-    border: '1px solid var(--border)',
     overflow: 'hidden',
     position: 'relative',
   };
 
   const cellBase: CSSProperties = {
-    border: '1px solid var(--border)',
     position: 'relative',
     display: 'flex',
     alignItems: 'center',
@@ -373,10 +363,10 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
           ? p.item.image_url.slice(6)
           : p.item.image_url;
 
-        const left = `${((p.col + minC) / ROOM_COLS) * 100}%`;
-        const top = `${((p.row + minR) / ROOM_ROWS) * 100}%`;
-        const width = `${(visualCols / ROOM_COLS) * 100}%`;
-        const height = `${(visualRows / ROOM_ROWS) * 100}%`;
+        const left = `${((p.col + minC) / cols) * 100}%`;
+        const top = `${((p.row + minR) / rows) * 100}%`;
+        const width = `${(visualCols / cols) * 100}%`;
+        const height = `${(visualRows / rows) * 100}%`;
 
         const fillHeight = anchorAlign === 'top' || anchorAlign === 'bottom';
         const isDragging = draggingId === p.instanceId;
@@ -422,11 +412,10 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
       })
     : null;
 
-  // Draggable overlays for expert view — invisible hit areas over each piece's full shape
+  // Draggable overlays for expert view
   const expertDragOverlays = expertView
     ? placed.map((p) => {
         const shape = p.item.shape;
-        // Compute bounding box of all non-empty cells
         let minR = shape.length, maxR = -1, minC = shape[0]?.length ?? 0, maxC = -1;
         for (let r = 0; r < shape.length; r++) {
           for (let c = 0; c < shape[r].length; c++) {
@@ -440,10 +429,10 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
         }
         if (maxR === -1) return null;
 
-        const left = `${((p.col + minC) / ROOM_COLS) * 100}%`;
-        const top = `${((p.row + minR) / ROOM_ROWS) * 100}%`;
-        const width = `${((maxC - minC + 1) / ROOM_COLS) * 100}%`;
-        const height = `${((maxR - minR + 1) / ROOM_ROWS) * 100}%`;
+        const left = `${((p.col + minC) / cols) * 100}%`;
+        const top = `${((p.row + minR) / rows) * 100}%`;
+        const width = `${((maxC - minC + 1) / cols) * 100}%`;
+        const height = `${((maxR - minR + 1) / rows) * 100}%`;
         const isDragging = draggingId === p.instanceId;
 
         return (
@@ -478,14 +467,28 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {Array.from({ length: ROOM_ROWS }, (_, row) =>
-        Array.from({ length: ROOM_COLS }, (_, col) => {
+      {Array.from({ length: rows }, (_, row) =>
+        Array.from({ length: cols }, (_, col) => {
           const key = `${row}-${col}`;
-          const shapeType = shapeTypeGrid?.[row][col];
+          const valid = cfg.isValidCell(row, col);
 
-          let bg = 'transparent';
+          if (!valid) {
+            return (
+              <div
+                key={key}
+                style={{
+                  ...cellBase,
+                  background: 'transparent',
+                  border: '1px solid transparent',
+                }}
+              />
+            );
+          }
+
+          const shapeType = shapeTypeGrid?.[row][col];
+          let bg = 'var(--code-bg)';
           if (expertView && shapeType) {
-            bg = CELL_COLORS[shapeType] || 'transparent';
+            bg = CELL_COLORS[shapeType] || 'var(--code-bg)';
           }
 
           let borderColor = 'var(--border)';
@@ -507,9 +510,9 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
       )}
       {imageOverlays}
       {expertDragOverlays}
-      {/* Hover highlight overlay – always on top of furniture images */}
-      {hoverInfo && Array.from({ length: ROOM_ROWS }, (_, row) =>
-        Array.from({ length: ROOM_COLS }, (_, col) => {
+      {/* Hover highlight overlay */}
+      {hoverInfo && Array.from({ length: rows }, (_, row) =>
+        Array.from({ length: cols }, (_, col) => {
           const key = `hover-${row}-${col}`;
           if (!hoverSet.has(`${row}-${col}`)) return null;
           const valid = hoverInfo.valid;
@@ -518,10 +521,10 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
               key={key}
               style={{
                 position: 'absolute',
-                left: `${(col / ROOM_COLS) * 100}%`,
-                top: `${(row / ROOM_ROWS) * 100}%`,
-                width: `${(1 / ROOM_COLS) * 100}%`,
-                height: `${(1 / ROOM_ROWS) * 100}%`,
+                left: `${(col / cols) * 100}%`,
+                top: `${(row / rows) * 100}%`,
+                width: `${(1 / cols) * 100}%`,
+                height: `${(1 / rows) * 100}%`,
                 background: valid
                   ? 'rgba(100,200,100,0.35)'
                   : 'rgba(200,100,100,0.35)',

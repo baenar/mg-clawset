@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import type { CSSProperties } from 'react';
 import type { Filters, SortConfig, SortField, FurnitureItem, RawFurnitureItem, PlacedFurniture } from './types/furniture';
+import { getRoomConfig } from './types/furniture';
 import furnitureData from './data/furniture_data.json';
 import SplitScreenContainer from './components/SplitScreenContainer';
 import FurnitureBrowser from './components/FurnitureBrowser';
@@ -77,7 +78,7 @@ const defaultSort: SortConfig = { field: 'name', direction: 'asc' };
 const ITEMS_PER_PAGE = 50;
 const STORAGE_KEY = 'mg-clawset-ownership';
 const ROOMS_STORAGE_KEY = 'mg-clawset-rooms';
-const NUM_ROOMS = 4;
+const NUM_ROOMS = 5;
 
 let nextInstanceId = 1;
 
@@ -176,14 +177,16 @@ function App() {
   }, [updateActiveRoom]);
 
   const handleRemoveFurniture = useCallback((instanceId: string) => {
+    const cfg = getRoomConfig(activeRoom);
     updateActiveRoom((prev) => {
-      const cascadeIds = findAnchoredPieces(instanceId, prev);
+      const cascadeIds = findAnchoredPieces(instanceId, prev, cfg);
       const removeSet = new Set([instanceId, ...cascadeIds]);
       return prev.filter((p) => !removeSet.has(p.instanceId));
     });
-  }, [updateActiveRoom]);
+  }, [updateActiveRoom, activeRoom]);
 
   const handleMoveFurniture = useCallback((instanceId: string, newRow: number, newCol: number) => {
+    const cfg = getRoomConfig(activeRoom);
     updateActiveRoom((prev) => {
       const target = prev.find(p => p.instanceId === instanceId);
       if (!target) return prev;
@@ -220,7 +223,7 @@ function App() {
       const toRemove = new Set<string>();
       for (const aid of anchoredIds) {
         const piece = next.find(p => p.instanceId === aid)!;
-        if (wouldCollide(piece.item, piece.row, piece.col, occupiedByOthers)) {
+        if (wouldCollide(piece.item, piece.row, piece.col, occupiedByOthers, cfg)) {
           toRemove.add(aid);
         }
       }
@@ -228,7 +231,7 @@ function App() {
       if (toRemove.size > 0) {
         // Also cascade-remove anything anchored to the colliding pieces
         for (const rid of toRemove) {
-          const cascaded = findAnchoredPieces(rid, next);
+          const cascaded = findAnchoredPieces(rid, next, cfg);
           for (const cid of cascaded) toRemove.add(cid);
         }
         next = next.filter(p => !toRemove.has(p.instanceId));
@@ -236,7 +239,7 @@ function App() {
 
       return next;
     });
-  }, [updateActiveRoom]);
+  }, [updateActiveRoom, activeRoom]);
 
   const handleSortChange = useCallback((field: SortField) => {
     setSort((prev) => ({
