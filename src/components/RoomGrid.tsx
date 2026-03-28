@@ -4,6 +4,15 @@ import type { FurnitureItem, PlacedFurniture, RoomConfig } from '../types/furnit
 import { getRoomConfig } from '../types/furniture';
 import { findAllAnchored, canPlaceGroup } from '../utils/anchorHelpers';
 
+function getTopAnchorOffset(shape: number[][]): number {
+  let offset = 0;
+  for (const row of shape) {
+    if (row.every(c => c === 1 || c === 4)) offset++;
+    else break;
+  }
+  return offset;
+}
+
 const CELL_COLORS: Record<number, string> = {
   1: 'transparent',
   2: 'var(--lavender-grey)',
@@ -241,8 +250,10 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
       const shapes = movedGroup.map(p => ({ row: p.row, col: p.col, shape: p.item.shape }));
       setHoverInfo({ shapes, valid });
     } else {
-      const valid = canPlace(payload.item, cell.row, cell.col, occupancy, anchorPoints, cfg);
-      setHoverInfo({ shapes: [{ row: cell.row, col: cell.col, shape: payload.item.shape }], valid });
+      const off = getTopAnchorOffset(payload.item.shape);
+      const placeRow = cell.row - off;
+      const valid = canPlace(payload.item, placeRow, cell.col, occupancy, anchorPoints, cfg);
+      setHoverInfo({ shapes: [{ row: placeRow, col: cell.col, shape: payload.item.shape }], valid });
     }
   }, [getCellFromEvent, occupancy, anchorPoints, placed, cfg]);
 
@@ -287,8 +298,10 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
       const data = e.dataTransfer.getData('application/json');
       if (!data) return;
       const item: FurnitureItem = JSON.parse(data);
-      if (canPlace(item, cell.row, cell.col, occupancy, anchorPoints, cfg)) {
-        onPlace(item, cell.row, cell.col);
+      const off = getTopAnchorOffset(item.shape);
+      const placeRow = cell.row - off;
+      if (canPlace(item, placeRow, cell.col, occupancy, anchorPoints, cfg)) {
+        onPlace(item, placeRow, cell.col);
       }
     } catch { /* ignore */ }
     dragPayloadRef.current = null;
