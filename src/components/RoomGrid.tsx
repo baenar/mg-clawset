@@ -236,7 +236,9 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
       const anchoredIds = findAllAnchored(payload.instanceId, placed);
       const groupIds = new Set([payload.instanceId, ...anchoredIds]);
 
-      const dRow = cell.row - target.row;
+      const off = getTopAnchorOffset(payload.item.shape);
+      const placeRow = cell.row - off;
+      const dRow = placeRow - target.row;
       const dCol = cell.col - target.col;
 
       const movedGroup = placed
@@ -277,7 +279,9 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
       const anchoredIds = findAllAnchored(payload.instanceId, placed);
       const groupIds = new Set([payload.instanceId, ...anchoredIds]);
 
-      const dRow = cell.row - target.row;
+      const off = getTopAnchorOffset(payload.item.shape);
+      const placeRow = cell.row - off;
+      const dRow = placeRow - target.row;
       const dCol = cell.col - target.col;
 
       const movedGroup = placed
@@ -288,7 +292,7 @@ export default function RoomGrid({ placed, onPlace, onRemove, onMove, expertView
       const ap = buildAnchorPointSet(placed, cfg, undefined, groupIds);
 
       if (canPlaceGroup(movedGroup, occ, ap, cfg)) {
-        onMove(payload.instanceId, cell.row, cell.col);
+        onMove(payload.instanceId, placeRow, cell.col);
       }
       dragPayloadRef.current = null;
       return;
